@@ -15,6 +15,10 @@ CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
 # HTTPS OTA: validate the server certificate against the bundled root CA store
 CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=y
 
+# BLE (NimBLE) for app pairing + Wi-Fi provisioning
+CONFIG_BT_ENABLED=y
+CONFIG_BT_NIMBLE_ENABLED=y
+
 # FreeRTOS / logging
 CONFIG_FREERTOS_HZ=1000
 CONFIG_LOG_DEFAULT_LEVEL_INFO=y
