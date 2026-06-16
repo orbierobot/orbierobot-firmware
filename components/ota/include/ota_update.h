@@ -21,10 +21,11 @@ void ota_update_init(void);
 // No-op if the image is already marked valid.
 void ota_mark_valid(void);
 
-// Fetch the manifest at manifest_url; if it advertises a different version,
-// download and apply it, then reboot (does not return on success). Blocking —
-// call only once Wi-Fi is connected. Returns ESP_OK when already up to date.
-esp_err_t ota_check_and_update(const char *manifest_url);
+// Fetch the manifest at manifest_url and look up this board's entry
+// (manifest.boards[board]); if it advertises a different version, download and
+// apply it, then reboot (does not return on success). Blocking — call only once
+// Wi-Fi is connected. Returns ESP_OK when already up to date.
+esp_err_t ota_check_and_update(const char *manifest_url, const char *board);
 
 // Running firmware version string from esp_app_desc (the git tag/describe).
 const char *ota_running_version(void);

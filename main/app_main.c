@@ -10,6 +10,7 @@
 
 #include "wifi_manager.h"
 #include "ota_update.h"
+#include "ble_prov.h"
 
 static const char *TAG = "openpaw";
 
@@ -19,11 +20,12 @@ static void on_wifi_connected(void)
     // Reaching the network is our boot health check: confirm this image so the
     // bootloader won't roll it back on the next reboot.
     ota_mark_valid();
+    ble_prov_set_status(BLE_PROV_CONNECTED);
 
 #if CONFIG_OPENPAW_OTA_CHECK_ON_BOOT
     if (CONFIG_OPENPAW_OTA_MANIFEST_URL[0] != '\0') {
         ESP_LOGI(TAG, "Checking for firmware update...");
-        ota_check_and_update(CONFIG_OPENPAW_OTA_MANIFEST_URL);
+        ota_check_and_update(CONFIG_OPENPAW_OTA_MANIFEST_URL, CONFIG_OPENPAW_BOARD_NAME);
     }
 #endif
 }
@@ -43,6 +45,7 @@ void app_main(void)
 
     ota_update_init();
     wifi_manager_init(on_wifi_connected);
+    ble_prov_init();
 
     // command_dispatcher_start();   // UART/BLE token loop (k/m/i/d)
     // motion_engine_init();         // load gait tables, start playback timer

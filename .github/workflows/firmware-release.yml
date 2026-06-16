@@ -14,15 +14,24 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        board: [esp32_ball_v1, hw_v2, openpaw]
+        # Each board maps to its silicon target. Add hw_v2/openpaw here once
+        # their board dirs diverge from esp32_ball_v1 (today they build identical).
+        include:
+          - board: esp32_ball_v1
+            target: esp32s3
     steps:
       - uses: actions/checkout@v4
+
+      # Pin the embedded app version to the tag so it matches the manifest
+      # exactly (ESP-IDF uses version.txt verbatim for esp_app_desc.version).
+      - name: Pin firmware version
+        run: echo "${GITHUB_REF_NAME}" > version.txt
 
       - name: Build firmware (${{ matrix.board }})
         uses: espressif/esp-idf-ci-action@v1
         with:
-          esp_idf_version: release-v5.3
-          target: esp32
+          esp_idf_version: v5.5
+          target: ${{ matrix.target }}
           command: idf.py -DOPENPAW_BOARD=${{ matrix.board }} build
 
       - name: Stage artifact
@@ -49,7 +58,8 @@ jobs:
 
       - name: Generate manifest.json
         run: |
-          VER="${GITHUB_REF_NAME#v}"
+          # Keep the leading "v": must match the version the firmware reports.
+          VER="${GITHUB_REF_NAME}"
           REPO="${GITHUB_REPOSITORY}"
           echo '{' > manifest.json
           echo "  \"channel\": \"stable\"," >> manifest.json

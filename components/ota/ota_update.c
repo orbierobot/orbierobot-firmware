@@ -91,13 +91,13 @@ static esp_err_t fetch_manifest(const char *url, char *out, int cap)
     return ESP_FAIL;
 }
 
-esp_err_t ota_check_and_update(const char *manifest_url)
+esp_err_t ota_check_and_update(const char *manifest_url, const char *board)
 {
-    if (!manifest_url || manifest_url[0] == '\0') {
+    if (!manifest_url || manifest_url[0] == '\0' || !board || board[0] == '\0') {
         return ESP_ERR_INVALID_ARG;
     }
 
-    char json[1024];
+    char json[2048];
     if (fetch_manifest(manifest_url, json, sizeof(json)) != ESP_OK) {
         return ESP_FAIL;
     }
@@ -109,8 +109,11 @@ esp_err_t ota_check_and_update(const char *manifest_url)
     }
 
     esp_err_t ret = ESP_OK;
-    const cJSON *jver = cJSON_GetObjectItemCaseSensitive(root, "version");
-    const cJSON *jurl = cJSON_GetObjectItemCaseSensitive(root, "url");
+    // manifest schema: { "boards": { "<board>": {"version","url","sha256","size"} } }
+    const cJSON *boards = cJSON_GetObjectItemCaseSensitive(root, "boards");
+    const cJSON *entry  = boards ? cJSON_GetObjectItemCaseSensitive(boards, board) : NULL;
+    const cJSON *jver = entry ? cJSON_GetObjectItemCaseSensitive(entry, "version") : NULL;
+    const cJSON *jurl = entry ? cJSON_GetObjectItemCaseSensitive(entry, "url") : NULL;
 
     if (cJSON_IsString(jver) && cJSON_IsString(jurl)) {
         const char *latest  = jver->valuestring;
@@ -139,7 +142,7 @@ esp_err_t ota_check_and_update(const char *manifest_url)
             ESP_LOGI(TAG, "Firmware already up to date");
         }
     } else {
-        ESP_LOGE(TAG, "manifest missing string 'version'/'url'");
+        ESP_LOGE(TAG, "manifest has no version/url for board '%s'", board);
         ret = ESP_FAIL;
     }
 
