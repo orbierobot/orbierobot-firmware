@@ -153,6 +153,10 @@ static void start_advertising(void)
     struct ble_gap_adv_params params = { 0 };
     params.conn_mode = BLE_GAP_CONN_MODE_UND;
     params.disc_mode = BLE_GAP_DISC_MODE_GEN;
+    // Slow advertising (~500-800ms) so BLE doesn't starve Wi-Fi on the shared
+    // 2.4GHz radio — keeps the camera stream/control responsive. Units: 0.625ms.
+    params.itvl_min = 0x320;
+    params.itvl_max = 0x500;
     int rc = ble_gap_adv_start(s_addr_type, NULL, BLE_HS_FOREVER, &params, gap_event, NULL);
     if (rc != 0) {
         ESP_LOGE(TAG, "adv_start failed: %d", rc);
