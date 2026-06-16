@@ -13,6 +13,7 @@
 #include "ble_prov.h"
 #include "camera_server.h"
 #include "motion.h"
+#include "sensors.h"
 
 static const char *TAG = "openpaw";
 
@@ -49,6 +50,7 @@ void app_main(void)
     ESP_ERROR_CHECK(err);
 
     motion_init();   // motors + laser ready before networking
+    sensors_init();  // temp + distance polling (shared I2C)
     ota_update_init();
     wifi_manager_init(on_wifi_connected);
     ble_prov_init();

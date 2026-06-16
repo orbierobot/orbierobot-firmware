@@ -10,6 +10,7 @@
 #include "freertos/task.h"
 
 #include "motion.h"
+#include "sensors.h"
 
 static const char *TAG = "camera";
 
@@ -112,11 +113,11 @@ static esp_err_t status_handler(httpd_req_t *req)
 {
     cors(req);
     httpd_resp_set_type(req, "application/json");
-    /* distance/temp arrive with the sensors branch; motion is live now. */
-    char json[160];
+    char json[176];
     snprintf(json, sizeof(json),
-             "{\"distance\":0,\"temp_ambient\":0,\"temp_object\":0,"
+             "{\"distance\":%d,\"temp_ambient\":%.1f,\"temp_object\":%.1f,"
              "\"laser\":%s,\"drive\":%d,\"turn\":%d}",
+             sensors_distance_mm(), sensors_temp_ambient(), sensors_temp_object(),
              motion_laser_on() ? "true" : "false", motion_drive(), motion_turn());
     return httpd_resp_sendstr(req, json);
 }
