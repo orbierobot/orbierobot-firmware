@@ -82,10 +82,12 @@ static int chr_access(uint16_t conn_handle, uint16_t attr_handle,
         const esp_app_desc_t *desc = esp_app_get_description();
         uint8_t mac[6] = { 0 };
         esp_read_mac(mac, ESP_MAC_WIFI_STA);
-        char info[96];
-        int n = snprintf(info, sizeof(info), "%s|%02x:%02x:%02x:%02x:%02x:%02x",
+        char ip[16] = { 0 };
+        wifi_manager_get_ip(ip, sizeof(ip));
+        char info[112];
+        int n = snprintf(info, sizeof(info), "%s|%02x:%02x:%02x:%02x:%02x:%02x|%s",
                          desc ? desc->version : "?",
-                         mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+                         mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], ip);
         return os_mbuf_append(ctxt->om, info, n) == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
     }
     return BLE_ATT_ERR_UNLIKELY;

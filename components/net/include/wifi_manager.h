@@ -26,6 +26,9 @@ esp_err_t wifi_manager_set_credentials(const char *ssid, const char *pass);
 // True once the station has an IP address.
 bool wifi_manager_is_connected(void);
 
+// Copy the current station IP ("a.b.c.d") into buf, or "" if not connected.
+void wifi_manager_get_ip(char *buf, size_t cap);
+
 #ifdef __cplusplus
 }
 #endif

@@ -11,6 +11,7 @@
 #include "wifi_manager.h"
 #include "ota_update.h"
 #include "ble_prov.h"
+#include "camera_server.h"
 
 static const char *TAG = "openpaw";
 
@@ -21,6 +22,9 @@ static void on_wifi_connected(void)
     // bootloader won't roll it back on the next reboot.
     ota_mark_valid();
     ble_prov_set_status(BLE_PROV_CONNECTED);
+
+    // Now that we have an IP, bring up the camera + control server (idempotent).
+    camera_server_start();
 
 #if CONFIG_OPENPAW_OTA_CHECK_ON_BOOT
     if (CONFIG_OPENPAW_OTA_MANIFEST_URL[0] != '\0') {

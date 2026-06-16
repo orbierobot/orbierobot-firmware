@@ -1,6 +1,7 @@
 #include "wifi_manager.h"
 
 #include <string.h>
+#include <stdio.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
@@ -22,6 +23,7 @@ static EventGroupHandle_t s_eg;
 static wifi_manager_connected_cb_t s_on_connected;
 static bool s_have_creds;
 static int  s_retries;
+static char s_ip[16];
 
 // Load credentials, preferring NVS and falling back to the Kconfig dev values.
 static bool load_creds(char *ssid, size_t ssid_cap, char *pass, size_t pass_cap)
@@ -66,6 +68,7 @@ static void on_event(void *arg, esp_event_base_t base, int32_t id, void *data)
         }
     } else if (base == WIFI_EVENT && id == WIFI_EVENT_STA_DISCONNECTED) {
         xEventGroupClearBits(s_eg, CONNECTED_BIT);
+        s_ip[0] = '\0';
         if (s_have_creds) {
             s_retries++;
             ESP_LOGW(TAG, "Disconnected; reconnecting (attempt %d)", s_retries);
@@ -73,7 +76,8 @@ static void on_event(void *arg, esp_event_base_t base, int32_t id, void *data)
         }
     } else if (base == IP_EVENT && id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t *evt = (ip_event_got_ip_t *)data;
-        ESP_LOGI(TAG, "Connected, IP " IPSTR, IP2STR(&evt->ip_info.ip));
+        snprintf(s_ip, sizeof(s_ip), IPSTR, IP2STR(&evt->ip_info.ip));
+        ESP_LOGI(TAG, "Connected, IP %s", s_ip);
         s_retries = 0;
         xEventGroupSetBits(s_eg, CONNECTED_BIT);
         if (s_on_connected) {
@@ -140,4 +144,13 @@ esp_err_t wifi_manager_set_credentials(const char *ssid, const char *pass)
 bool wifi_manager_is_connected(void)
 {
     return s_eg && (xEventGroupGetBits(s_eg) & CONNECTED_BIT);
+}
+
+void wifi_manager_get_ip(char *buf, size_t cap)
+{
+    if (!buf || cap == 0) {
+        return;
+    }
+    strncpy(buf, s_ip, cap - 1);
+    buf[cap - 1] = '\0';
 }
