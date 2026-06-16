@@ -2,9 +2,18 @@
 CONFIG_PARTITION_TABLE_CUSTOM=y
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 
+# Flash size — XIAO ESP32-S3 has 8MB; partitions.csv (dual OTA + storage) needs >=4MB
+CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y
+
 # OTA rollback safety (app must self-validate or bootloader reverts)
 CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
 CONFIG_APP_ROLLBACK_ENABLE=y
+
+# Console + logs over native USB (XIAO ESP32-S3 has no UART bridge)
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+
+# HTTPS OTA: validate the server certificate against the bundled root CA store
+CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=y
 
 # FreeRTOS / logging
 CONFIG_FREERTOS_HZ=1000

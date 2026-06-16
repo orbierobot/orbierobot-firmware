@@ -1,6 +1,7 @@
 idf_component_register(
     SRCS "app_main.c"
     INCLUDE_DIRS "."
+    REQUIRES net ota nvs_flash
 )
 
 # Board name compiled in for logging / runtime guard
