@@ -34,6 +34,27 @@ public:
     vSemaphoreCreateBinary(xSemaphore);
   }
 
+  /** Use a pre-existing I2C master bus handle instead of creating one */
+  void setBusHandle(i2c_master_bus_handle_t bus) {
+    vl53l0x_dev.bus_handle = bus;
+  }
+
+  /** Add device on the existing bus handle */
+  bool addDevice(uint32_t freq = 400000) {
+    i2c_device_config_t dev_cfg = {
+        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
+        .device_address = VL53L0X_I2C_ADDRESS_DEFAULT,
+        .scl_speed_hz = freq,
+    };
+    esp_err_t err = i2c_master_bus_add_device(
+        vl53l0x_dev.bus_handle, &dev_cfg, &vl53l0x_dev.dev_handle);
+    if (err != ESP_OK) {
+      ESP_LOGE(TAG, "i2c_master_bus_add_device failed: %s", esp_err_to_name(err));
+      return false;
+    }
+    return true;
+  }
+
   bool init() {
     /* gpio init */
     if (gpio_xshut != GPIO_NUM_MAX) {
