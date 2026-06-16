@@ -114,6 +114,9 @@ void wifi_manager_init(wifi_manager_connected_cb_t on_connected)
     }
 
     ESP_ERROR_CHECK(esp_wifi_start());
+    // Keep the radio awake: modem-sleep adds ~100ms+ latency that makes the
+    // MJPEG stream and 500ms status polling laggy during live control.
+    esp_wifi_set_ps(WIFI_PS_NONE);
 }
 
 esp_err_t wifi_manager_set_credentials(const char *ssid, const char *pass)

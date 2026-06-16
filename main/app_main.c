@@ -12,6 +12,7 @@
 #include "ota_update.h"
 #include "ble_prov.h"
 #include "camera_server.h"
+#include "motion.h"
 
 static const char *TAG = "openpaw";
 
@@ -47,6 +48,7 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(err);
 
+    motion_init();   // motors + laser ready before networking
     ota_update_init();
     wifi_manager_init(on_wifi_connected);
     ble_prov_init();

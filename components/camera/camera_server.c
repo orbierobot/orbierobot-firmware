@@ -1,10 +1,15 @@
 #include "camera_server.h"
 
+#include <stdlib.h>
+#include <stdio.h>
+
 #include "esp_camera.h"
 #include "esp_http_server.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+
+#include "motion.h"
 
 static const char *TAG = "camera";
 
@@ -50,8 +55,8 @@ static esp_err_t camera_init(void)
         .pin_href = HREF_GPIO_NUM,
         .pin_pclk = PCLK_GPIO_NUM,
         .xclk_freq_hz = 20000000,
-        .ledc_timer = LEDC_TIMER_0,
-        .ledc_channel = LEDC_CHANNEL_0,
+        .ledc_timer = LEDC_TIMER_1,    /* TIMER_0/CH0-3 are the motors */
+        .ledc_channel = LEDC_CHANNEL_4,
         .pixel_format = PIXFORMAT_JPEG,
         .frame_size = FRAMESIZE_QVGA,
         .jpeg_quality = 12,
@@ -107,14 +112,36 @@ static esp_err_t status_handler(httpd_req_t *req)
 {
     cors(req);
     httpd_resp_set_type(req, "application/json");
-    /* TODO: real sensor values once imu/sensors/motion drivers are integrated. */
-    static const char *json =
-        "{\"distance\":0,\"temp_ambient\":0,\"temp_object\":0,"
-        "\"laser\":false,\"drive\":0,\"turn\":0}";
+    /* distance/temp arrive with the sensors branch; motion is live now. */
+    char json[160];
+    snprintf(json, sizeof(json),
+             "{\"distance\":0,\"temp_ambient\":0,\"temp_object\":0,"
+             "\"laser\":%s,\"drive\":%d,\"turn\":%d}",
+             motion_laser_on() ? "true" : "false", motion_drive(), motion_turn());
     return httpd_resp_sendstr(req, json);
 }
 
-/* Stubs: accept the app's commands so the UI works; wire to drivers later. */
+static esp_err_t motor_handler(httpd_req_t *req)
+{
+    cors(req);
+    char q[64], val[16];
+    int drive = 0, turn = 0;
+    if (httpd_req_get_url_query_str(req, q, sizeof(q)) == ESP_OK) {
+        if (httpd_query_key_value(q, "drive", val, sizeof(val)) == ESP_OK) drive = atoi(val);
+        if (httpd_query_key_value(q, "turn", val, sizeof(val)) == ESP_OK) turn = atoi(val);
+    }
+    motion_set_motor(drive, turn);
+    return httpd_resp_sendstr(req, "ok");
+}
+
+static esp_err_t laser_handler(httpd_req_t *req)
+{
+    cors(req);
+    bool on = motion_toggle_laser();
+    return httpd_resp_sendstr(req, on ? "LASER_ON" : "LASER_OFF");
+}
+
+/* /beep stays a stub until the sound branch lands. */
 static esp_err_t ok_handler(httpd_req_t *req)
 {
     cors(req);
@@ -149,8 +176,8 @@ void camera_server_start(void)
     if (s_web) {
         const httpd_uri_t routes[] = {
             { .uri = "/status", .method = HTTP_GET, .handler = status_handler },
-            { .uri = "/motor",  .method = HTTP_GET, .handler = ok_handler },
-            { .uri = "/laser",  .method = HTTP_GET, .handler = ok_handler },
+            { .uri = "/motor",  .method = HTTP_GET, .handler = motor_handler },
+            { .uri = "/laser",  .method = HTTP_GET, .handler = laser_handler },
             { .uri = "/beep",   .method = HTTP_GET, .handler = ok_handler },
         };
         for (size_t i = 0; i < sizeof(routes) / sizeof(routes[0]); i++) {

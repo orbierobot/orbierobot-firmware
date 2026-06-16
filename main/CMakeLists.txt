@@ -1,7 +1,7 @@
 idf_component_register(
     SRCS "app_main.c"
     INCLUDE_DIRS "."
-    REQUIRES net ota ble camera nvs_flash
+    REQUIRES net ota ble camera motion nvs_flash
 )
 
 # Board name compiled in for logging / runtime guard
