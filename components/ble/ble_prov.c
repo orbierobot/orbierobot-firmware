@@ -29,12 +29,17 @@ static const ble_uuid128_t status_uuid =
     BLE_UUID128_INIT(0x23,0xd1,0xbc,0xea,0x5f,0x78,0x23,0x15,0xde,0xef,0x12,0x12,0x02,0x40,0x6e,0x00);
 static const ble_uuid128_t info_uuid =
     BLE_UUID128_INIT(0x23,0xd1,0xbc,0xea,0x5f,0x78,0x23,0x15,0xde,0xef,0x12,0x12,0x03,0x40,0x6e,0x00);
+static const ble_uuid128_t networks_uuid =
+    BLE_UUID128_INIT(0x23,0xd1,0xbc,0xea,0x5f,0x78,0x23,0x15,0xde,0xef,0x12,0x12,0x04,0x40,0x6e,0x00);
 
 static uint8_t  s_addr_type;
 static uint16_t s_conn_handle = BLE_HS_CONN_HANDLE_NONE;
 static uint16_t s_status_val_handle;
+static uint16_t s_networks_val_handle;
 static ble_prov_status_t s_status = BLE_PROV_IDLE;
+static uint8_t s_status_reason;  // wifi disconnect reason for the FAILED state
 static char s_name[20];
+static char s_networks[1024] = "[]";  // JSON array of scanned SSIDs
 
 static void start_advertising(void);
 
@@ -48,7 +53,8 @@ static void handle_credentials(const char *json)
     const cJSON *jssid = cJSON_GetObjectItemCaseSensitive(root, "ssid");
     const cJSON *jpass = cJSON_GetObjectItemCaseSensitive(root, "pass");
     if (cJSON_IsString(jssid) && jssid->valuestring[0] != '\0') {
-        ESP_LOGI(TAG, "Provisioning Wi-Fi via BLE (ssid=%s)", jssid->valuestring);
+        int pass_len = cJSON_IsString(jpass) ? (int)strlen(jpass->valuestring) : 0;
+        ESP_LOGI(TAG, "Provisioning via BLE: ssid='%s' pass_len=%d", jssid->valuestring, pass_len);
         ble_prov_set_status(BLE_PROV_CONNECTING);
         wifi_manager_set_credentials(jssid->valuestring,
                                      cJSON_IsString(jpass) ? jpass->valuestring : "");
@@ -74,8 +80,8 @@ static int chr_access(uint16_t conn_handle, uint16_t attr_handle,
     }
     if (ctxt->op == BLE_GATT_ACCESS_OP_READ_CHR &&
         ble_uuid_cmp(ctxt->chr->uuid, &status_uuid.u) == 0) {
-        uint8_t v = (uint8_t)s_status;
-        return os_mbuf_append(ctxt->om, &v, 1) == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
+        uint8_t v[2] = { (uint8_t)s_status, s_status_reason };
+        return os_mbuf_append(ctxt->om, v, sizeof(v)) == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
     }
     if (ctxt->op == BLE_GATT_ACCESS_OP_READ_CHR &&
         ble_uuid_cmp(ctxt->chr->uuid, &info_uuid.u) == 0) {
@@ -90,6 +96,11 @@ static int chr_access(uint16_t conn_handle, uint16_t attr_handle,
                          mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], ip);
         return os_mbuf_append(ctxt->om, info, n) == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
     }
+    if (ctxt->op == BLE_GATT_ACCESS_OP_READ_CHR &&
+        ble_uuid_cmp(ctxt->chr->uuid, &networks_uuid.u) == 0) {
+        return os_mbuf_append(ctxt->om, s_networks, strlen(s_networks)) == 0
+                   ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
+    }
     return BLE_ATT_ERR_UNLIKELY;
 }
 
@@ -102,11 +113,23 @@ static const struct ble_gatt_svc_def gatt_svcs[] = {
             { .uuid = &status_uuid.u, .access_cb = chr_access,
               .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_NOTIFY, .val_handle = &s_status_val_handle },
             { .uuid = &info_uuid.u,   .access_cb = chr_access, .flags = BLE_GATT_CHR_F_READ },
+            { .uuid = &networks_uuid.u, .access_cb = chr_access,
+              .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_NOTIFY, .val_handle = &s_networks_val_handle },
             { 0 }
         },
     },
     { 0 }
 };
+
+// Scan Wi-Fi (blocking) off the BLE host task, then notify the app the list is ready.
+static void scan_task(void *arg)
+{
+    wifi_manager_scan_json(s_networks, sizeof(s_networks));
+    if (s_networks_val_handle != 0) {
+        ble_gatts_chr_updated(s_networks_val_handle);
+    }
+    vTaskDelete(NULL);
+}
 
 static int gap_event(struct ble_gap_event *event, void *arg)
 {
@@ -115,6 +138,8 @@ static int gap_event(struct ble_gap_event *event, void *arg)
         if (event->connect.status == 0) {
             s_conn_handle = event->connect.conn_handle;
             ESP_LOGI(TAG, "BLE client connected");
+            // Scan nearby Wi-Fi so the app can offer a picker.
+            xTaskCreate(scan_task, "wifi_scan", 4096, NULL, 4, NULL);
         } else {
             start_advertising();
         }
@@ -185,7 +210,13 @@ static void host_task(void *param)
 
 void ble_prov_set_status(ble_prov_status_t status)
 {
+    ble_prov_set_status_reason(status, 0);
+}
+
+void ble_prov_set_status_reason(ble_prov_status_t status, uint8_t reason)
+{
     s_status = status;
+    s_status_reason = reason;
     if (s_status_val_handle != 0) {
         ble_gatts_chr_updated(s_status_val_handle); // notify subscribers
     }

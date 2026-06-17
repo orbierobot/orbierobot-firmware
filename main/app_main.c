@@ -36,6 +36,13 @@ static void on_wifi_connected(void)
 #endif
 }
 
+// Connecting gave up (bad SSID/password or radio contention) — tell the app.
+static void on_wifi_failed(int reason)
+{
+    ESP_LOGW(TAG, "Wi-Fi provisioning failed (reason %d)", reason);
+    ble_prov_set_status_reason(BLE_PROV_FAILED, (uint8_t)reason);
+}
+
 // TODO(#14): init servo, imu, sensors, command dispatcher, BLE provisioning
 void app_main(void)
 {
@@ -52,7 +59,7 @@ void app_main(void)
     motion_init();   // motors + laser ready before networking
     sensors_init();  // temp + distance polling (shared I2C)
     ota_update_init();
-    wifi_manager_init(on_wifi_connected);
+    wifi_manager_init(on_wifi_connected, on_wifi_failed);
     ble_prov_init();
 
     // command_dispatcher_start();   // UART/BLE token loop (k/m/i/d)

@@ -6,6 +6,8 @@
 //   - INFO   (read)         : "<fw-version>|<sta-mac>" for the app / OTA trigger
 #pragma once
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -22,6 +24,11 @@ void ble_prov_init(void);
 
 // Update the STATUS characteristic and notify any subscribed client.
 void ble_prov_set_status(ble_prov_status_t status);
+
+// Like ble_prov_set_status but also carries a failure reason code (the esp-idf
+// Wi-Fi disconnect reason) so the app can show a specific message. The STATUS
+// characteristic value is 2 bytes: [status, reason].
+void ble_prov_set_status_reason(ble_prov_status_t status, uint8_t reason);
 
 #ifdef __cplusplus
 }
