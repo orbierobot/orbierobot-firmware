@@ -82,6 +82,18 @@ static bool motor_b_was_stopped = true;
 static volatile bool motors_running = false;
 static int64_t last_motor_cmd_us = 0;
 
+/* Odometry estimation (PWM+time based, no encoders) */
+static volatile float odom_x = 0.0f;
+static volatile float odom_y = 0.0f;
+static volatile float odom_heading = 0.0f;
+static uint32_t odom_trajectory[2000][3];
+static int odom_traj_idx = 0;
+static portMUX_TYPE odom_mux = portMUX_INITIALIZER_UNLOCKED;
+
+#define MAX_SPEED_MPS    0.15f
+#define WHEELBASE_M      0.12f
+#define ODOM_UPDATE_MS   50
+
 /* ==================== Motor Control ==================== */
 
 static int apply_dead_zone(int abs_speed) {
@@ -119,8 +131,8 @@ static void set_one_motor(int fwd_ch, int rev_ch, int speed, bool *was_stopped, 
 }
 
 static void set_motors(int drive, int turn, bool skip_kick) {
-    int left = drive + turn;
-    int right = drive - turn;
+    int left = drive - turn;
+    int right = drive + turn;
     if (left > 255) { left = 255; }
     if (left < -255) { left = -255; }
     if (right > 255) { right = 255; }
@@ -586,6 +598,100 @@ static esp_err_t status_handler(httpd_req_t *req)
     return res;
 }
 
+/* ==================== Odometry Handlers ==================== */
+
+static esp_err_t pose_handler(httpd_req_t *req) {
+    cJSON *root = cJSON_CreateObject();
+    taskENTER_CRITICAL(&odom_mux);
+    cJSON_AddNumberToObject(root, "x", odom_x);
+    cJSON_AddNumberToObject(root, "y", odom_y);
+    cJSON_AddNumberToObject(root, "heading", odom_heading);
+    taskEXIT_CRITICAL(&odom_mux);
+    cJSON_AddNumberToObject(root, "drive", motor_target_drive);
+    cJSON_AddNumberToObject(root, "turn", motor_target_turn);
+    const char *json = cJSON_PrintUnformatted(root);
+    httpd_resp_set_type(req, "application/json");
+    esp_err_t res = httpd_resp_sendstr(req, json);
+    free((void *)json);
+    cJSON_Delete(root);
+    return res;
+}
+
+static esp_err_t trajectory_handler(httpd_req_t *req) {
+    char buf[32768];
+    int pos = 0;
+    pos += snprintf(buf + pos, sizeof(buf) - pos, "{\"points\":[");
+    taskENTER_CRITICAL(&odom_mux);
+    int count = 0;
+    for (int i = 0; i < 2000; i++) {
+        int idx = (odom_traj_idx - 1 - i + 2000) % 2000;
+        uint32_t x = odom_trajectory[idx][0];
+        uint32_t y = odom_trajectory[idx][1];
+        if (x == 0 && y == 0 && i > 10) break;
+        if (count > 0) pos += snprintf(buf + pos, sizeof(buf) - pos, ",");
+        pos += snprintf(buf + pos, sizeof(buf) - pos, "[%lu,%lu]", (unsigned long)x, (unsigned long)y);
+        count++;
+        if (pos > sizeof(buf) - 200) break;
+    }
+    taskEXIT_CRITICAL(&odom_mux);
+    pos += snprintf(buf + pos, sizeof(buf) - pos, "]}");
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_sendstr(req, buf);
+    return ESP_OK;
+}
+
+static esp_err_t odometry_reset_handler(httpd_req_t *req) {
+    (void)req;
+    taskENTER_CRITICAL(&odom_mux);
+    odom_x = 0; odom_y = 0; odom_heading = 0;
+    memset(odom_trajectory, 0, sizeof(odom_trajectory));
+    odom_traj_idx = 0;
+    taskEXIT_CRITICAL(&odom_mux);
+    httpd_resp_sendstr(req, "{\"success\":true}");
+    return ESP_OK;
+}
+
+/* ==================== Odometry Task ==================== */
+
+static void odometry_task(void *pv) {
+    (void)pv;
+    int64_t last_us = esp_timer_get_time();
+    while (true) {
+        vTaskDelay(pdMS_TO_TICKS(ODOM_UPDATE_MS));
+        int64_t now_us = esp_timer_get_time();
+        float dt = (float)(now_us - last_us) / 1000000.0f;
+        last_us = now_us;
+
+        float drive = motor_current_drive_f;
+        float turn = motor_current_turn_f;
+
+        float speed = (fabsf(drive) / 255.0f) * MAX_SPEED_MPS;
+        if (fabsf(drive) < 5) speed = 0;
+        if (drive < 0) speed = -speed;
+
+        float turn_rate = (turn / 255.0f) * (MAX_SPEED_MPS / WHEELBASE_M);
+        float vx = speed * cosf(odom_heading);
+        float vy = speed * sinf(odom_heading);
+
+        taskENTER_CRITICAL(&odom_mux);
+        odom_x += vx * dt;
+        odom_y += vy * dt;
+        odom_heading += turn_rate * dt;
+        while (odom_heading > (float)M_PI) odom_heading -= 2.0f * (float)M_PI;
+        while (odom_heading < (float)-M_PI) odom_heading += 2.0f * (float)M_PI;
+
+        static int64_t last_log_us = 0;
+        if (now_us - last_log_us > 100000) {
+            last_log_us = now_us;
+            odom_trajectory[odom_traj_idx][0] = (uint32_t)(odom_x * 1000);
+            odom_trajectory[odom_traj_idx][1] = (uint32_t)(odom_y * 1000);
+            odom_trajectory[odom_traj_idx][2] = (uint32_t)(odom_heading * 180.0f / (float)M_PI * 100.0f);
+            odom_traj_idx = (odom_traj_idx + 1) % 2000;
+        }
+        taskEXIT_CRITICAL(&odom_mux);
+    }
+}
+
 static void start_camera(void)
 {
     camera_config_t config = {
@@ -638,15 +744,18 @@ static void start_webserver(void)
     httpd_handle_t ctrl = NULL;
     ESP_ERROR_CHECK(httpd_start(&ctrl, &config));
     httpd_uri_t uris[] = {
-        { .uri = "/",       .method = HTTP_GET,  .handler = index_handler },
-        { .uri = "/update", .method = HTTP_GET,  .handler = update_page_handler },
-        { .uri = "/ota",    .method = HTTP_POST, .handler = ota_handler },
-        { .uri = "/motor",  .method = HTTP_GET,  .handler = motor_handler },
-        { .uri = "/beep",   .method = HTTP_GET,  .handler = beep_handler },
-        { .uri = "/laser",  .method = HTTP_GET,  .handler = laser_handler },
-        { .uri = "/status", .method = HTTP_GET,  .handler = status_handler },
-    };
-    for (int i = 0; i < (int)(sizeof(uris)/sizeof(uris[0])); i++) {
+            { .uri = "/",       .method = HTTP_GET,  .handler = index_handler },
+            { .uri = "/update", .method = HTTP_GET,  .handler = update_page_handler },
+            { .uri = "/ota",    .method = HTTP_POST, .handler = ota_handler },
+            { .uri = "/motor",  .method = HTTP_GET,  .handler = motor_handler },
+            { .uri = "/beep",   .method = HTTP_GET,  .handler = beep_handler },
+            { .uri = "/laser",  .method = HTTP_GET,  .handler = laser_handler },
+            { .uri = "/status", .method = HTTP_GET,  .handler = status_handler },
+            { .uri = "/api/pose", .method = HTTP_GET, .handler = pose_handler },
+            { .uri = "/api/trajectory", .method = HTTP_GET, .handler = trajectory_handler },
+            { .uri = "/api/odometry/reset", .method = HTTP_POST, .handler = odometry_reset_handler },
+        };
+        for (int i = 0; i < (int)(sizeof(uris)/sizeof(uris[0])); i++) {
         ESP_ERROR_CHECK(httpd_register_uri_handler(ctrl, &uris[i]));
     }
 
@@ -750,5 +859,6 @@ extern "C" void app_main(void)
     start_wifi_ap();
     start_webserver();
     xTaskCreate(motor_monitor_task, "motor_mon", 1536, NULL, 1, NULL);
-    xTaskCreate(vl53_task, "vl53", 8192, NULL, 5, NULL);
-}
+        xTaskCreate(vl53_task, "vl53", 8192, NULL, 5, NULL);
+        xTaskCreate(odometry_task, "odom", 3072, NULL, 3, NULL);
+    }
