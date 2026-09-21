@@ -28,6 +28,32 @@ static orbie_wifi_state_t s_state = ORBIE_WIFI_IDLE;
 static char s_ssid[33] = "";
 static char s_ip[16]  = "";
 static int  s_retries = 0;
+static int  s_reason  = 0;   /* last wifi_err_reason_t from a disconnect */
+
+/* A failed join is almost always one of two things, and the user cannot tell
+ * them apart from the outside - especially on a hidden network, where a
+ * mistyped name and a wrong password both just time out. The reason code from
+ * the disconnect event does distinguish them, so say which it was. */
+static const char *reason_text(int reason)
+{
+    switch (reason) {
+        case WIFI_REASON_NO_AP_FOUND:
+            return "Network not found. Check the name - hidden names are case-sensitive - and that the robot is in range.";
+        case WIFI_REASON_AUTH_FAIL:
+        case WIFI_REASON_4WAY_HANDSHAKE_TIMEOUT:
+        case WIFI_REASON_HANDSHAKE_TIMEOUT:
+        case WIFI_REASON_AUTH_EXPIRE:
+        case WIFI_REASON_MIC_FAILURE:
+            return "Wrong password.";
+        case WIFI_REASON_ASSOC_FAIL:
+        case WIFI_REASON_CONNECTION_FAIL:
+            return "The network refused the connection. It may be full, or filtering by MAC address.";
+        case 0:
+            return "";
+        default:
+            return "Could not connect.";
+    }
+}
 
 /* ===================== credential storage ===================== */
 
@@ -62,6 +88,11 @@ static void sta_connect(const char *ssid, const char *pass)
     strlcpy((char *)cfg.sta.password, pass ? pass : "", sizeof(cfg.sta.password));
     /* An open network must not advertise a minimum auth mode. */
     cfg.sta.threshold.authmode = (pass && pass[0]) ? WIFI_AUTH_WPA_PSK : WIFI_AUTH_OPEN;
+    /* A hidden AP puts no SSID in its beacons, so it is only found by a
+     * directed probe on the right channel. Fast scan stops at the first
+     * beacon match and can miss it entirely; sweep every channel instead. */
+    cfg.sta.scan_method = WIFI_ALL_CHANNEL_SCAN;
+    cfg.sta.sort_method = WIFI_CONNECT_AP_BY_SIGNAL;
 
     strlcpy(s_ssid, ssid, sizeof(s_ssid));
     s_ip[0]   = '\0';
@@ -77,15 +108,23 @@ static void sta_connect(const char *ssid, const char *pass)
 static void on_wifi_event(void *arg, esp_event_base_t base, int32_t id, void *data)
 {
     if (base == WIFI_EVENT && id == WIFI_EVENT_STA_DISCONNECTED) {
-        if (s_state == ORBIE_WIFI_CONNECTING && s_retries < MAX_RETRIES) {
+        wifi_event_sta_disconnected_t *d = (wifi_event_sta_disconnected_t *)data;
+        if (d) s_reason = d->reason;
+
+        /* Retrying a name that does not exist just burns 5 attempts and makes
+         * the user wait ~15s for a verdict we already have. */
+        bool hopeless = (s_reason == WIFI_REASON_NO_AP_FOUND);
+
+        if (s_state == ORBIE_WIFI_CONNECTING && s_retries < MAX_RETRIES && !hopeless) {
             s_retries++;
-            ESP_LOGW(TAG, "disconnected, retry %d/%d", s_retries, MAX_RETRIES);
+            ESP_LOGW(TAG, "disconnected (reason %d), retry %d/%d",
+                     s_reason, s_retries, MAX_RETRIES);
             esp_wifi_connect();
         } else if (s_state != ORBIE_WIFI_IDLE) {
-            /* Most often a wrong password; the AP simply stops responding. */
             s_state = ORBIE_WIFI_FAILED;
             s_ip[0] = '\0';
-            ESP_LOGW(TAG, "giving up on \"%s\"", s_ssid);
+            ESP_LOGW(TAG, "giving up on \"%s\": reason %d - %s",
+                     s_ssid, s_reason, reason_text(s_reason));
         }
     } else if (base == IP_EVENT && id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t *e = (ip_event_got_ip_t *)data;
@@ -210,36 +249,54 @@ static const char PORTAL_HTML[] =
 "#msg{margin-top:18px;padding:13px;border-radius:10px;font-size:14px;display:none}"
 "#msg.ok{display:block;background:#12301c;color:#7ee2a8;border:1px solid #1f5c36}"
 "#msg.err{display:block;background:#331519;color:#ff8f9c;border:1px solid #6b2029}"
-"#msg.busy{display:block;background:#1a2433;color:#8fb8 e6;border:1px solid #294056}"
+"#msg.busy{display:block;background:#1a2433;color:#8fb8e6;border:1px solid #294056}"
 ".row{display:flex;gap:8px}.row select{flex:1}"
+".pw{position:relative}.pw input{padding-right:74px}"
+"#eye{position:absolute;right:6px;top:6px;width:auto;margin:0;padding:8px 12px;background:#2a2a2a;color:#bbb;font-size:13px;font-weight:500;border-radius:7px}"
 ".rescan{width:auto;padding:13px 16px;margin:0;background:#2a2a2a;font-size:14px}"
 "</style></head><body>"
 "<h1>Connect Orbie to Wi-Fi</h1>"
 "<p class='sub'>Pick your home network so Orbie can reach the internet.</p>"
 "<label>Network</label>"
-"<div class='row'><select id='ssid'><option>Scanning...</option></select>"
+"<div class='row'><select id='ssid' onchange='pick()'><option>Scanning...</option></select>"
 "<button class='rescan' onclick='scan()'>Rescan</button></div>"
+"<div id='hidden-wrap' style='display:none'>"
+"<label>Network name</label>"
+"<input id='hssid' placeholder='Exact name, case-sensitive' autocapitalize='off' autocorrect='off'>"
+"</div>"
 "<label>Password</label>"
-"<input id='pass' type='password' placeholder='Leave blank if open' autocapitalize='off' autocorrect='off'>"
+"<div class='pw'><input id='pass' type='password' placeholder='Leave blank if open' autocapitalize='off' autocorrect='off' autocomplete='off' spellcheck='false'>"
+"<button type='button' id='eye' onclick='togglePw()' aria-label='Show password'>Show</button></div>"
 "<button id='go' onclick='save()'>Connect</button>"
 "<div id='msg'></div>"
 "<script>"
 "function show(c,t){var m=document.getElementById('msg');m.className=c;m.textContent=t;}"
+"function togglePw(){var i=document.getElementById('pass'),e=document.getElementById('eye');"
+"var on=i.type==='password';i.type=on?'text':'password';e.textContent=on?'Hide':'Show';"
+"e.setAttribute('aria-label',on?'Hide password':'Show password');i.focus();}"
+"function addHidden(s){var o=document.createElement('option');o.value='__hidden__';"
+"o.textContent='Other (hidden network)...';s.appendChild(o);}"
+"function pick(){var h=document.getElementById('ssid').value==='__hidden__';"
+"document.getElementById('hidden-wrap').style.display=h?'block':'none';"
+"if(h)document.getElementById('hssid').focus();}"
 "function scan(){var s=document.getElementById('ssid');s.innerHTML='<option>Scanning...</option>';"
 "fetch('/api/scan').then(r=>r.json()).then(function(l){s.innerHTML='';"
-"if(!l.length){s.innerHTML='<option>No networks found</option>';return;}"
 "l.forEach(function(n){var o=document.createElement('option');o.value=n.ssid;"
-"o.textContent=n.ssid+'  ('+n.rssi+' dBm'+(n.open?', open':'')+')';s.appendChild(o);});})"
-".catch(function(){s.innerHTML='<option>Scan failed</option>';});}"
-"function save(){var b=document.getElementById('go');b.disabled=true;"
+"o.textContent=n.ssid+'  ('+n.rssi+' dBm'+(n.open?', open':'')+')';s.appendChild(o);});"
+"addHidden(s);pick();})"
+".catch(function(){s.innerHTML='';addHidden(s);pick();show('err','Scan failed - you can still enter a network by name.');});}"
+"function save(){var sel=document.getElementById('ssid').value;"
+"var ssid=sel==='__hidden__'?document.getElementById('hssid').value.trim():sel;"
+"if(!ssid){show('err','Enter the network name.');return;}"
+"var b=document.getElementById('go');b.disabled=true;"
 "show('busy','Connecting...');"
 "fetch('/api/connect',{method:'POST',headers:{'Content-Type':'application/json'},"
-"body:JSON.stringify({ssid:document.getElementById('ssid').value,pass:document.getElementById('pass').value})})"
+"body:JSON.stringify({ssid:ssid,pass:document.getElementById('pass').value})})"
 ".then(function(){poll(0);}).catch(function(){b.disabled=false;show('err','Request failed');});}"
 "function poll(n){fetch('/api/wifi-status').then(r=>r.json()).then(function(d){"
 "if(d.state=='connected'){show('ok','Connected to '+d.ssid+'  -  IP '+d.ip);"
 "document.getElementById('go').disabled=false;return;}"
-"if(d.state=='failed'){show('err','Could not connect. Check the password and try again.');"
+"if(d.state=='failed'){show('err',d.detail||'Could not connect.');"
 "document.getElementById('go').disabled=false;return;}"
 "if(n>40){show('err','Timed out.');document.getElementById('go').disabled=false;return;}"
 "setTimeout(function(){poll(n+1);},1000);});}"
@@ -343,9 +400,10 @@ static esp_err_t wifi_status_get(httpd_req_t *req)
         case ORBIE_WIFI_FAILED:     st = "failed";     break;
         default: break;
     }
-    char out[160];
-    snprintf(out, sizeof(out), "{\"state\":\"%s\",\"ssid\":\"%s\",\"ip\":\"%s\"}",
-             st, s_ssid, s_ip);
+    char out[320];
+    snprintf(out, sizeof(out),
+             "{\"state\":\"%s\",\"ssid\":\"%s\",\"ip\":\"%s\",\"reason\":%d,\"detail\":\"%s\"}",
+             st, s_ssid, s_ip, s_reason, reason_text(s_reason));
     httpd_resp_set_type(req, "application/json");
     httpd_resp_sendstr(req, out);
     return ESP_OK;
