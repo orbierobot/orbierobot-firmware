@@ -9,6 +9,7 @@
 #include "esp_system.h"
 #include "esp_timer.h"
 #include "esp_wifi.h"
+#include "esp_mac.h"
 #include "nvs_flash.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -19,8 +20,10 @@
 #include "cJSON.h"
 #include "led_display.h"
 #include "boot_sound.h"
+#include "wifi_portal.h"
 #include "driver/i2c_master.h"
 #include "driver/i2s_std.h"
+#include "lwip/sockets.h"
 #include "soc/usb_serial_jtag_reg.h"
 #include "soc/usb_serial_jtag_struct.h"
 
@@ -57,8 +60,23 @@ static volatile bool temp_ok = false;
 #define HREF_GPIO_NUM     47
 #define PCLK_GPIO_NUM     13
 
-#define WIFI_SSID "PAWME-Robot"
-#define WIFI_PASS "pawme1234"
+/* Captive-portal AP. The SSID is ORBIE_XXXX, where XXXX is the last two bytes
+ * of the base MAC in hex — the same four characters used on the unit's label,
+ * so the network name matches the sticker (e.g. ORBIE_73B4). Filled by
+ * start_wifi_ap(); the initial value is only a placeholder. */
+static char wifi_ssid[16] = "ORBIE_0000";
+
+/* Per-device AP password, also derived from the MAC (e.g. "orbie-73b4-f862").
+ * WPA2 is not decoration here: the captive portal collects the user's HOME
+ * Wi-Fi password over plain HTTP, /ota accepts unauthenticated firmware
+ * uploads, and port 81 streams live camera video. An open AP would expose all
+ * three to anyone in radio range. A shared password across every unit would
+ * mean one leak compromises the fleet, so this is unique per robot. */
+static char wifi_pass[24] = "orbie-0000-0000";
+
+/* Shared secret for /ota, derived from the MAC alongside the SSID. See the
+ * comment above ota_request_from_ap() for what this does and does not buy. */
+static char ota_token[24] = "";
 
 /* Motor pins (DRV8833) */
 #define MOTOR_A_FWD  1
@@ -213,7 +231,7 @@ static esp_err_t index_handler(httpd_req_t *req)
     httpd_resp_sendstr(req,
 "<!doctype html><html><head>"
 "<meta name='viewport' content='width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no'>"
-"<title>PAWME Robot</title>"
+"<title>Orbie</title>"
 "<style>"
 "*{margin:0;padding:0;box-sizing:border-box}"
 "body{background:#111;color:#eee;font-family:Arial;text-align:center;touch-action:none;overflow:hidden;height:100dvh}"
@@ -308,7 +326,12 @@ static esp_err_t index_handler(httpd_req_t *req)
 static esp_err_t update_page_handler(httpd_req_t *req)
 {
     httpd_resp_set_type(req, "text/html");
-    httpd_resp_sendstr(req,
+    /* The page is only reachable from the AP, so handing it the token here is
+     * no weaker than the AP gate itself - and it keeps the upload one click. */
+    char tok[96];
+    snprintf(tok, sizeof(tok), "<script>const OTA_TOKEN='%s';</script>", ota_token);
+    httpd_resp_sendstr_chunk(req, tok);
+    httpd_resp_sendstr_chunk(req,
 "<!doctype html><html><head>"
 "<meta name='viewport' content='width=device-width,initial-scale=1'>"
 "<title>OTA Update</title>"
@@ -317,14 +340,63 @@ static esp_err_t update_page_handler(httpd_req_t *req)
 "<input id='file' type='file' accept='.bin'>"
 "<br><button onclick='u()'>Upload firmware</button>"
 "<pre id='st'></pre>"
-"<script>async function u(){var f=document.getElementById('file').files[0];if(!f){st.textContent='Choose a .bin file first';return;}st.textContent='Uploading...';var r=await fetch('/ota',{method:'POST',body:f});st.textContent=await r.text();}</script>"
+"<script>async function u(){var f=document.getElementById('file').files[0];if(!f){st.textContent='Choose a .bin file first';return;}st.textContent='Uploading...';var r=await fetch('/ota',{method:'POST',headers:{'X-Orbie-Token':OTA_TOKEN},body:f});st.textContent=await r.text();}</script>"
 "</body></html>"
     );
+    httpd_resp_sendstr_chunk(req, NULL);
     return ESP_OK;
+}
+
+/* OTA is the highest-value target on this robot: a successful upload owns the
+ * device permanently. Two independent gates guard it.
+ *
+ * 1. AP-only. The request must arrive on our own 192.168.4.0/24 SoftAP, so an
+ *    attacker has to be in radio range. Once the robot joins the user's home
+ *    Wi-Fi it is reachable from every device on that LAN, and without this
+ *    check every one of them could reflash it.
+ * 2. A shared token in X-Orbie-Token, which /update embeds automatically.
+ *
+ * The token is derived from the MAC, so it is obscurity rather than real
+ * secrecy - the SSID already reveals two of its bytes and the OUI is public,
+ * leaving ~16 bits. It stops accidents and casual pokes, not a determined
+ * attacker. Gate 1 is the one doing the real work. Before this ships, replace
+ * the token with a random per-device secret stored in NVS, or require a
+ * physical button press to arm an update. */
+static bool ota_request_from_ap(httpd_req_t *req)
+{
+    int fd = httpd_req_to_sockfd(req);
+    if (fd < 0) return false;
+    struct sockaddr_in local = {};
+    socklen_t len = sizeof(local);
+    if (getsockname(fd, (struct sockaddr *)&local, &len) != 0) return false;
+    /* 192.168.4.0/24 is the SoftAP subnet; the STA side gets a router address. */
+    return (ntohl(local.sin_addr.s_addr) & 0xFFFFFF00u) == 0xC0A80400u;
+}
+
+static bool ota_token_ok(httpd_req_t *req)
+{
+    char given[40] = {0};
+    if (httpd_req_get_hdr_value_str(req, "X-Orbie-Token", given, sizeof(given)) != ESP_OK) {
+        return false;
+    }
+    return strcmp(given, ota_token) == 0;
 }
 
 static esp_err_t ota_handler(httpd_req_t *req)
 {
+    if (!ota_request_from_ap(req)) {
+        ESP_LOGW(TAG, "OTA rejected: not from the ORBIE AP");
+        httpd_resp_send_err(req, HTTPD_403_FORBIDDEN,
+                            "Firmware updates are only accepted from the robot's own Wi-Fi.");
+        return ESP_FAIL;
+    }
+    if (!ota_token_ok(req)) {
+        ESP_LOGW(TAG, "OTA rejected: bad or missing X-Orbie-Token");
+        httpd_resp_send_err(req, HTTPD_403_FORBIDDEN, "Missing or invalid update token.");
+        return ESP_FAIL;
+    }
+    ESP_LOGI(TAG, "OTA accepted (%d bytes incoming)", req->content_len);
+
     esp_ota_handle_t ota_handle = 0;
     const esp_partition_t *update_partition = esp_ota_get_next_update_partition(NULL);
     if (!update_partition) {
@@ -345,11 +417,31 @@ static esp_err_t ota_handler(httpd_req_t *req)
             httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Upload failed");
             return ESP_FAIL;
         }
-        esp_ota_write(ota_handle, buffer, received);
+        /* A dropped write must abort. Setting the boot partition after a
+         * partial image bricks the robot on the next reboot. */
+        err = esp_ota_write(ota_handle, buffer, received);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "esp_ota_write failed: %s", esp_err_to_name(err));
+            esp_ota_abort(ota_handle);
+            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Flash write failed");
+            return ESP_FAIL;
+        }
         remaining -= received;
     }
-    esp_ota_end(ota_handle);
-    esp_ota_set_boot_partition(update_partition);
+    /* esp_ota_end validates the image; a truncated or corrupt upload fails here. */
+    err = esp_ota_end(ota_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "esp_ota_end failed: %s", esp_err_to_name(err));
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid firmware image");
+        return ESP_FAIL;
+    }
+    err = esp_ota_set_boot_partition(update_partition);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "set_boot_partition failed: %s", esp_err_to_name(err));
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Could not switch partition");
+        return ESP_FAIL;
+    }
+    ESP_LOGI(TAG, "OTA written and validated, rebooting");
     httpd_resp_sendstr(req, "Update successful. Rebooting...");
     vTaskDelay(pdMS_TO_TICKS(1000));
     esp_restart();
@@ -720,19 +812,47 @@ static void start_wifi_ap(void)
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     esp_netif_create_default_wifi_ap();
+    esp_netif_create_default_wifi_sta();
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+    /* Derive ORBIE_XXXX from the base MAC (ESP_MAC_WIFI_STA is the efuse MAC,
+     * the one esptool reports — the SoftAP MAC is that plus one and would not
+     * match the label on the robot). */
+    uint8_t mac[6] = {0};
+    esp_read_mac(mac, ESP_MAC_WIFI_STA);
+    snprintf(wifi_ssid, sizeof(wifi_ssid), "ORBIE_%02X%02X", mac[4], mac[5]);
+    snprintf(wifi_pass, sizeof(wifi_pass), "orbie-%02x%02x-%02x%02x",
+             mac[4], mac[5], mac[2], mac[3]);
+    snprintf(ota_token, sizeof(ota_token), "%02x%02x%02x%02x",
+             mac[2], mac[3], mac[4], mac[5]);
+
     wifi_config_t wifi_config = {};
-    strcpy((char *)wifi_config.ap.ssid, WIFI_SSID);
-    strcpy((char *)wifi_config.ap.password, WIFI_PASS);
-    wifi_config.ap.ssid_len = strlen(WIFI_SSID);
+    strcpy((char *)wifi_config.ap.ssid, wifi_ssid);
+    strcpy((char *)wifi_config.ap.password, wifi_pass);
+    wifi_config.ap.ssid_len = strlen(wifi_ssid);
     wifi_config.ap.channel = 1;
     wifi_config.ap.max_connection = 4;
+#ifdef ORBIE_OPEN_AP
+    /* Dev convenience: no password, so phones and laptops rejoin instantly.
+     * SAFE for bench work, with one exception - the captive portal posts the
+     * user's HOME Wi-Fi password over plain HTTP, and an open AP leaves that
+     * readable to anyone sniffing in radio range. Provision a throwaway SSID
+     * or a phone hotspot while open; build WITHOUT this flag before entering a
+     * real home network, and for anything that leaves the bench. */
+    wifi_config.ap.authmode = WIFI_AUTH_OPEN;
+    wifi_config.ap.password[0] = '\0';
+#else
     wifi_config.ap.authmode = WIFI_AUTH_WPA_WPA2_PSK;
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
+#endif
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_APSTA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
-    ESP_LOGI(TAG, "Wi-Fi AP: %s / %s", WIFI_SSID, WIFI_PASS);
+    #ifdef ORBIE_OPEN_AP
+    ESP_LOGW(TAG, "Wi-Fi AP: %s (OPEN - dev build, no password)", wifi_ssid);
+#else
+    ESP_LOGI(TAG, "Wi-Fi AP: %s / %s", wifi_ssid, wifi_pass);
+#endif
+    wifi_portal_init();   /* reconnects to a saved network if we have one */
 }
 
 /* Control server on port 80, Stream server on port 81 */
@@ -740,7 +860,7 @@ static void start_webserver(void)
 {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.server_port = 80;
-    config.max_uri_handlers = 12;
+    config.max_uri_handlers = 24;
     httpd_handle_t ctrl = NULL;
     ESP_ERROR_CHECK(httpd_start(&ctrl, &config));
     httpd_uri_t uris[] = {
@@ -768,6 +888,9 @@ static void start_webserver(void)
     ESP_ERROR_CHECK(httpd_start(&stream, &stream_cfg));
     httpd_uri_t stream_uri = { .uri = "/stream", .method = HTTP_GET, .handler = stream_handler };
     ESP_ERROR_CHECK(httpd_register_uri_handler(stream, &stream_uri));
+
+    wifi_portal_register(ctrl);
+    wifi_portal_start_dns();
 
     ESP_LOGI(TAG, "Servers: port 80 (control), port 81 (MJPEG stream)");
 }
@@ -816,9 +939,16 @@ extern "C" void app_main(void)
         ESP_LOGI(TAG, "Reset reason: %d", reason);
 
         /* Disable USB Serial/JTAG to prevent spurious resets on battery
-                   (floating D+/D- lines cause USB_UART_CHIP_RESET every ~5s) */
+         * (floating D+/D- lines cause USB_UART_CHIP_RESET every ~5s).
+         * Skipped in dev builds (-DORBIE_KEEP_USB_CONSOLE=1) so the console
+         * stays up for idf.py monitor; keep it ON for untethered demos. */
+#ifndef ORBIE_KEEP_USB_CONSOLE
                 USB_SERIAL_JTAG.conf0.usb_pad_enable = 0;
                 USB_SERIAL_JTAG.conf0.phy_sel = 0;
+#else
+                ESP_LOGW(TAG, "USB Serial/JTAG kept alive (dev build) - expect "
+                              "spurious resets if running on battery");
+#endif
 
     /* Immediately drive all output pins LOW to prevent floating inputs
        from causing motor driver current draw during boot */
@@ -849,15 +979,40 @@ extern "C" void app_main(void)
     init_temp_sensor();
     init_display(i2c_bus);
 
+    /* Boot-stage beacon. The console is unusable on this board (primary console
+     * is UART0 = GPIO43, which we ground above), so each stage paints the face a
+     * solid colour. Whatever colour the robot is stuck on says how far it got:
+     *   RED     display up          ORANGE  speaker up
+     *   YELLOW  greeting task spawned                GREEN   boot animation done
+     *   CYAN    demo reel done      BLUE    Wi-Fi AP up
+     *   MAGENTA web server up (then the normal face) */
+#define BOOT_BEACON(r,g,b) do { display_solid((r),(g),(b)); \
+                                vTaskDelay(pdMS_TO_TICKS(600)); } while (0)
+
+    BOOT_BEACON(60, 0, 0);          /* RED: display initialised */
+
     /* Initialize speaker */
     init_speaker();
+    BOOT_BEACON(60, 25, 0);         /* ORANGE: I2S speaker initialised */
 
     /* Boot animation: LED face + voice greeting playing in parallel */
     xTaskCreate([](void*) { play_boot_sound(); vTaskDelete(NULL); }, "boot_snd", 8192, NULL, 3, NULL);
+    BOOT_BEACON(60, 60, 0);         /* YELLOW: greeting task spawned */
+
     display_play_boot_animation();
+    BOOT_BEACON(0, 60, 0);          /* GREEN: boot animation survived */
+
+    /* Demo reel: heart -> star -> loader -> rainbow (~6.8s), runs while the
+     * 7.9s greeting is still playing so the two finish together. */
+    display_play_demo_sequence();
+    BOOT_BEACON(0, 60, 60);         /* CYAN: demo reel survived */
 
     start_wifi_ap();
+    BOOT_BEACON(0, 0, 60);          /* BLUE: Wi-Fi AP up */
     start_webserver();
+    BOOT_BEACON(60, 0, 60);         /* MAGENTA: web server up - boot complete */
+    display_look_direction(EYE_CENTER);
+
     xTaskCreate(motor_monitor_task, "motor_mon", 1536, NULL, 1, NULL);
         xTaskCreate(vl53_task, "vl53", 8192, NULL, 5, NULL);
         xTaskCreate(odometry_task, "odom", 3072, NULL, 3, NULL);
