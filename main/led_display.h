@@ -97,6 +97,35 @@ void display_play_blink(void);
  */
 void display_play_center_to_bliss(void);
 
+/**
+ * @brief Fill both eyes with one solid colour and push it immediately.
+ *        Used as a boot-stage beacon: the console is unusable on this board
+ *        (primary console is UART0, whose TX GPIO43 app_main drives LOW), so
+ *        the face is the only way to see how far boot got.
+ */
+void display_solid(uint8_t r, uint8_t g, uint8_t b);
+
+/* ========== Demo Expressions ========== */
+/* Each blocks for loops * (frames * frame duration). See demo_expressions.h. */
+
+/** @brief Red hearts, pulsing like a heartbeat (~0.9s per loop). */
+void display_play_heart(int loops);
+
+/** @brief Yellow stars with a shimmer sweeping across them (~1.0s per loop). */
+void display_play_star(int loops);
+
+/** @brief Green arc rotating with a fading tail — a "thinking" state (~0.8s per loop). */
+void display_play_loader(int loops);
+
+/** @brief Normal eye shape sweeping the full hue range (~1.4s per loop). */
+void display_play_rainbow(int loops);
+
+/**
+ * @brief Play the full demo reel: heart -> star -> loader -> rainbow,
+ *        then settle on the neutral centre face. Blocks ~6.8s.
+ */
+void display_play_demo_sequence(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -3,6 +3,7 @@
 #include "boot_expressions.h"
 #include "joystick_expressions.h"
 #include "expr_look_center_to_bliss.h"
+#include "demo_expressions.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -179,13 +180,65 @@ void display_play_boot_animation(void)
         vTaskDelay(pdMS_TO_TICKS(expr_look_lr_anim[i].duration_ms));
     }
 
-    /* Show heart for 3 seconds then settle on neutral center */
+    /* Pulsing red hearts, then settle on neutral centre */
     ESP_LOGI(TAG, "Showing heart...");
-    display_draw_rgb_frame(expr_joy_heart);
-    vTaskDelay(pdMS_TO_TICKS(3000));
+    display_play_heart(2);
 
     ESP_LOGI(TAG, "Boot animation complete — neutral face");
     display_draw_rgb_frame(eyeDirectionFrames[EYE_CENTER]);
+}
+
+void display_solid(uint8_t r, uint8_t g, uint8_t b)
+{
+    for (int y = 0; y < 8; y++) {
+        for (int x = 0; x < 16; x++) {
+            display_set_pixel(x, y, r, g, b);
+        }
+    }
+    display_show();
+}
+
+/* ========== Demo Expressions ========== */
+
+static void play_anim(const ExprFrame *anim, unsigned count, int loops)
+{
+    for (int l = 0; l < loops; l++) {
+        for (unsigned i = 0; i < count; i++) {
+            display_show_frame(&anim[i]);
+            vTaskDelay(pdMS_TO_TICKS(anim[i].duration_ms));
+        }
+    }
+}
+
+void display_play_heart(int loops)
+{
+    play_anim(expr_heart_anim, EXPR_HEART_FRAME_COUNT, loops);
+}
+
+void display_play_star(int loops)
+{
+    play_anim(expr_star_anim, EXPR_STAR_FRAME_COUNT, loops);
+}
+
+void display_play_loader(int loops)
+{
+    play_anim(expr_loader_anim, EXPR_LOADER_FRAME_COUNT, loops);
+}
+
+void display_play_rainbow(int loops)
+{
+    play_anim(expr_rainbow_anim, EXPR_RAINBOW_FRAME_COUNT, loops);
+}
+
+void display_play_demo_sequence(void)
+{
+    ESP_LOGI(TAG, "Demo reel: heart -> star -> loader -> rainbow");
+    display_play_heart(2);
+    display_play_star(2);
+    display_play_loader(2);
+    display_play_rainbow(1);
+    display_draw_rgb_frame(eyeDirectionFrames[EYE_CENTER]);
+    ESP_LOGI(TAG, "Demo reel complete");
 }
 
 void display_look_direction(enum EyeDirection dir)
