@@ -1,0 +1,17 @@
+# Dev-only sdkconfig fragment — console over USB Serial/JTAG.
+#
+# The default config puts the primary console on UART0, whose TX is GPIO43.
+# app_main() drives GPIO43 LOW during its pin-grounding pass (to stop the motor
+# driver sinking current at boot), so ESP_LOGx output goes nowhere on this
+# hardware. USB Serial/JTAG as *secondary* only carries early ROM output.
+#
+# Build with:
+#   idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.dev" \
+#          -DORBIE_KEEP_USB_CONSOLE=1 build
+#
+# Do NOT use this for battery/demo builds: pair it with ORBIE_KEEP_USB_CONSOLE,
+# which also keeps the USB PHY powered, and floating D+/D- lines reset the
+# board every ~5s when untethered.
+
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+CONFIG_ESP_CONSOLE_SECONDARY_NONE=y
