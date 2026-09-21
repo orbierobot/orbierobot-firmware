@@ -248,6 +248,8 @@ static esp_err_t index_handler(httpd_req_t *req)
 "</style></head><body>"
 "<img id='stream' src='http://192.168.4.1:81/stream'>"
 "<div id='info'>Connecting...</div>"
+"<div style='font-size:12px;margin:2px 0 6px'><a href='/portal' style='color:#7a7a7a;text-decoration:none'>Wi-Fi setup</a>"
+"<span style='color:#444'> | </span><a href='/update' style='color:#7a7a7a;text-decoration:none'>Firmware</a></div>"
 "<div id='ctrl'>"
 "<div class='joy' id='drivejoy'><div class='knob' id='driveknob'></div><div class='lbl'>DRIVE</div></div>"
 "<div class='row'>"
