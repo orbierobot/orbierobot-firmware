@@ -19,6 +19,8 @@
 #include "driver/ledc.h"
 #include "esp_psram.h"
 #include "cJSON.h"
+#include "esp_rom_sys.h"
+#include "i2c_lock.h"
 #include "led_display.h"
 #include "boot_sound.h"
 #include "control_page.h"
@@ -307,11 +309,58 @@ static bool ota_request_from_ap(httpd_req_t *req)
 {
     int fd = httpd_req_to_sockfd(req);
     if (fd < 0) return false;
-    struct sockaddr_in local = {};
+
+    /* MUST be sockaddr_storage, not sockaddr_in. With CONFIG_LWIP_IPV6 (the
+     * default) esp_http_server listens on PF_INET6, so getsockname() hands
+     * back a sockaddr_in6 and every v4 client arrives IPv4-mapped. Reading
+     * that through a sockaddr_in lands on sin6_flowinfo instead of the
+     * address, so the subnet test compared against zero and rejected
+     * everything - including the robot's own AP. OTA could never succeed. */
+    struct sockaddr_storage local = {};
     socklen_t len = sizeof(local);
     if (getsockname(fd, (struct sockaddr *)&local, &len) != 0) return false;
-    /* 192.168.4.0/24 is the SoftAP subnet; the STA side gets a router address. */
-    return (ntohl(local.sin_addr.s_addr) & 0xFFFFFF00u) == 0xC0A80400u;
+
+    uint32_t ip;
+    if (local.ss_family == AF_INET6) {
+        const struct sockaddr_in6 *a6 = (const struct sockaddr_in6 *)&local;
+        const uint8_t *b = a6->sin6_addr.s6_addr;
+        /* ::ffff:a.b.c.d - an IPv4 peer on the dual-stack socket. */
+        bool v4_mapped = !memcmp(b, "\0\0\0\0\0\0\0\0\0\0\xff\xff", 12);
+        if (!v4_mapped) {
+            ESP_LOGW(TAG, "OTA from a real IPv6 address - not recognised as local");
+            return false;
+        }
+        ip = ((uint32_t)b[12] << 24) | ((uint32_t)b[13] << 16) |
+             ((uint32_t)b[14] << 8)  |  (uint32_t)b[15];
+    } else if (local.ss_family == AF_INET) {
+        ip = ntohl(((const struct sockaddr_in *)&local)->sin_addr.s_addr);
+    } else {
+        return false;
+    }
+
+    ESP_LOGI(TAG, "OTA request arrived on %u.%u.%u.%u",
+             (unsigned)(ip >> 24), (unsigned)((ip >> 16) & 0xff),
+             (unsigned)((ip >> 8) & 0xff), (unsigned)(ip & 0xff));
+
+    /* The SoftAP subnet is always allowed. */
+    if ((ip & 0xFFFFFF00u) == 0xC0A80400u) return true;
+
+#ifdef ORBIE_OTA_ALLOW_LAN
+    /* Dev builds also accept the owner's own network. The AP has to share the
+     * STA's channel, which makes it unreliable to join while the robot is
+     * online - and being unable to update a robot you can see is worse than
+     * the risk here, on a home network, behind a token.
+     *
+     * NOT for shipping: it means any device on the network can reflash the
+     * robot, and the token is MAC-derived and therefore weak. */
+    if ((ip & 0xFF000000u) == 0x0A000000u ||      /* 10.0.0.0/8      */
+        (ip & 0xFFF00000u) == 0xAC100000u ||      /* 172.16.0.0/12   */
+        (ip & 0xFFFF0000u) == 0xC0A80000u) {      /* 192.168.0.0/16  */
+        ESP_LOGW(TAG, "OTA from the LAN allowed (dev build)");
+        return true;
+    }
+#endif
+    return false;
 }
 
 static bool ota_token_ok(httpd_req_t *req)
@@ -351,13 +400,32 @@ static esp_err_t ota_handler(httpd_req_t *req)
     }
     char buffer[1024];
     int remaining = req->content_len;
+    int timeouts = 0;
+    #define OTA_MAX_TIMEOUTS 50
     while (remaining > 0) {
         int received = httpd_req_recv(req, buffer, sizeof(buffer));
+
+        /* A timeout is not a failure. The upload is ~1.5MB and the robot is
+         * doing other work while it arrives, so a socket read can come up
+         * empty under load; treating that as fatal threw away the entire
+         * transfer minutes in. Only a real error or a closed connection ends
+         * it. */
+        if (received == HTTPD_SOCK_ERR_TIMEOUT) {
+            if (++timeouts > OTA_MAX_TIMEOUTS) {
+                ESP_LOGE(TAG, "OTA gave up after %d consecutive timeouts", timeouts);
+                esp_ota_abort(ota_handle);
+                httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Upload stalled");
+                return ESP_FAIL;
+            }
+            continue;
+        }
         if (received <= 0) {
+            ESP_LOGE(TAG, "OTA recv failed (%d) with %d bytes to go", received, remaining);
             esp_ota_abort(ota_handle);
             httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Upload failed");
             return ESP_FAIL;
         }
+        timeouts = 0;
         /* A dropped write must abort. Setting the boot partition after a
          * partial image bricks the robot on the next reboot. */
         err = esp_ota_write(ota_handle, buffer, received);
@@ -396,11 +464,18 @@ static esp_err_t stream_handler(httpd_req_t *req)
     while (true) {
         camera_fb_t *fb = esp_camera_fb_get();
         if (!fb) { break; }
+
+        /* Every exit from here MUST return the buffer. There are only fb_count
+         * of them, so a client that disconnects mid-frame used to strand one
+         * permanently - two of those and esp_camera_fb_get() returns NULL for
+         * good, which shows up as /capture failing 500 forever until reboot. */
         char boundary[] = "--frame\r\nContent-Type: image/jpeg\r\n\r\n";
-        if (httpd_resp_send_chunk(req, boundary, strlen(boundary)) != ESP_OK) { break; }
-        if (httpd_resp_send_chunk(req, (const char *)fb->buf, fb->len) != ESP_OK) { esp_camera_fb_return(fb); break; }
-        if (httpd_resp_send_chunk(req, "\r\n", 2) != ESP_OK) { esp_camera_fb_return(fb); break; }
+        bool sent = httpd_resp_send_chunk(req, boundary, strlen(boundary)) == ESP_OK
+                 && httpd_resp_send_chunk(req, (const char *)fb->buf, fb->len) == ESP_OK
+                 && httpd_resp_send_chunk(req, "\r\n", 2) == ESP_OK;
         esp_camera_fb_return(fb);
+
+        if (!sent) break;
         vTaskDelay(pdMS_TO_TICKS(80));
     }
     return ESP_OK;
@@ -542,8 +617,60 @@ static void play_boot_sound(void)
              (unsigned)wrote, (unsigned)BOOT_PCM_NUM_BYTES, volume_pct);
 }
 
+/**
+ * Free the I2C bus if a slave is still holding SDA down.
+ *
+ * A soft reset - esptool's USB reset, a panic, an OTA reboot - restarts the
+ * ESP32 mid-transaction. The slave it was talking to never sees the rest of
+ * the clock, so it keeps driving SDA low waiting for it. SDA stuck low means
+ * no master can issue a START, and EVERY address NACKs: the LED matrix stops
+ * responding and the face never appears, while a power cycle "fixes" it.
+ *
+ * The recovery is the one in the I2C spec: bit-bang up to nine SCL pulses with
+ * SDA released, which walks the slave through the byte it was stuck in, then a
+ * manual STOP. Must run before the driver claims the pins.
+ */
+static void i2c_bus_recover(void)
+{
+    const gpio_num_t sda = GPIO_NUM_5, scl = GPIO_NUM_6;
+
+    gpio_config_t io = {
+        .pin_bit_mask = (1ULL << sda) | (1ULL << scl),
+        .mode = GPIO_MODE_INPUT_OUTPUT_OD,     /* open-drain: we only ever pull low */
+        .pull_up_en = GPIO_PULLUP_ENABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+    gpio_config(&io);
+    gpio_set_level(sda, 1);
+    gpio_set_level(scl, 1);
+    esp_rom_delay_us(10);
+
+    if (gpio_get_level(sda)) return;           /* bus is idle - nothing to do */
+
+    ESP_LOGW(TAG, "I2C SDA held low - clocking the bus free");
+    for (int i = 0; i < 9 && !gpio_get_level(sda); i++) {
+        gpio_set_level(scl, 0);
+        esp_rom_delay_us(5);
+        gpio_set_level(scl, 1);
+        esp_rom_delay_us(5);
+    }
+
+    /* STOP: SDA low->high while SCL is high. */
+    gpio_set_level(sda, 0);
+    esp_rom_delay_us(5);
+    gpio_set_level(scl, 1);
+    esp_rom_delay_us(5);
+    gpio_set_level(sda, 1);
+    esp_rom_delay_us(5);
+
+    ESP_LOGW(TAG, "I2C recovery %s", gpio_get_level(sda) ? "succeeded" : "FAILED - SDA still low");
+}
+
 static void init_i2c_bus(void)
 {
+    i2c_bus_recover();
+
     i2c_master_bus_config_t bus_cfg = {
         .i2c_port = I2C_NUM_0,
         .sda_io_num = GPIO_NUM_5,
@@ -553,6 +680,23 @@ static void init_i2c_bus(void)
         .flags = { .enable_internal_pullup = 1 },
     };
     ESP_ERROR_CHECK(i2c_new_master_bus(&bus_cfg, &i2c_bus));
+
+    /* Scan once at boot. Knowing WHICH addresses answer turns "the face is
+     * broken" into a specific question: a missing 0x50 with an unexpected
+     * address present means the ADDR pins are floating, and nothing present
+     * means the chip is unpowered or unsoldered. */
+    {
+        char found[128];
+        int n = 0;
+        found[0] = 0;
+        for (uint8_t addr = 0x08; addr < 0x78; addr++) {
+            if (i2c_master_probe(i2c_bus, addr, 50) == ESP_OK) {
+                n += snprintf(found + n, sizeof(found) - n, " 0x%02x", addr);
+                if (n >= (int)sizeof(found) - 8) break;
+            }
+        }
+        ESP_LOGW(TAG, "I2C scan:%s", n ? found : " (nothing responded)");
+    }
     ESP_LOGI(TAG, "Shared I2C bus initialized (SDA=GPIO5, SCL=GPIO6)");
 }
 
@@ -619,6 +763,7 @@ static void init_temp_sensor(void)
 
 static void read_temp_sensor(void)
 {
+    if (!i2c_lock_take(100)) return;   /* skip this sample, try again in 200ms */
     if (!temp_ok || !temp_dev) return;
     uint8_t reg;
     uint8_t buf[2];
@@ -636,6 +781,7 @@ static void read_temp_sensor(void)
         int16_t raw = (int16_t)(buf[0] | (buf[1] << 8));
         temp_object = (float)raw * 0.02f - 273.15f;
     }
+    i2c_lock_give();
 }
 
 /* Head-tilt servo travel. See head_handler() for why these are conservative. */
@@ -833,6 +979,9 @@ static esp_err_t capture_handler(httpd_req_t *req)
 {
     camera_fb_t *fb = esp_camera_fb_get();
     if (!fb) {
+        /* Almost always means every frame buffer is checked out, not that the
+         * sensor died - worth saying so, because the two need different fixes. */
+        ESP_LOGE(TAG, "capture failed: no frame buffer available");
         httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Camera capture failed");
         return ESP_FAIL;
     }
@@ -1325,8 +1474,33 @@ static void start_webserver(void)
      * evening: registration failed part-way and took the portal's 404
      * catch-all with it, so the captive page stopped appearing. */
     config.max_uri_handlers = 40;
+    /* The panel polls camera frames and status continuously, so connections
+     * churn fast. The default socket count is quickly exhausted and the server
+     * then resets connections, which the browser reports as ERR_EMPTY_RESPONSE
+     * or ERR_CONNECTION_RESET - and every button on the page starts failing.
+     * lru_purge_enable drops the oldest idle socket instead of refusing. */
+    config.max_open_sockets = 10;
+    config.lru_purge_enable = true;
+    config.recv_wait_timeout = 10;
+    config.send_wait_timeout = 10;
     httpd_handle_t ctrl = NULL;
-    ESP_ERROR_CHECK(httpd_start(&ctrl, &config));
+    /* Not ESP_ERROR_CHECK: an unusable socket count aborted here and put the
+     * robot in a reboot loop. Falling back to the default is far better than
+     * a robot that will not boot. */
+    esp_err_t herr = httpd_start(&ctrl, &config);
+    if (herr != ESP_OK) {
+        ESP_LOGE(TAG, "httpd_start failed (%s) with max_open_sockets=%d; retrying with defaults",
+                 esp_err_to_name(herr), config.max_open_sockets);
+        httpd_config_t fallback = HTTPD_DEFAULT_CONFIG();
+        fallback.server_port = 80;
+        fallback.max_uri_handlers = 40;
+        fallback.lru_purge_enable = true;
+        herr = httpd_start(&ctrl, &fallback);
+        if (herr != ESP_OK) {
+            ESP_LOGE(TAG, "control server could not start: %s", esp_err_to_name(herr));
+            return;
+        }
+    }
     httpd_uri_t uris[] = {
             { .uri = "/",       .method = HTTP_GET,  .handler = index_handler },
             { .uri = "/update", .method = HTTP_GET,  .handler = update_page_handler },

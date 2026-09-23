@@ -1,5 +1,5 @@
 idf_component_register(
-    SRCS "app_main.cpp" "IS31FL3733.c" "led_display.c" "boot_sound.c" "wifi_portal.c" "voice_link.c"
+    SRCS "app_main.cpp" "IS31FL3733.c" "led_display.c" "boot_sound.c" "wifi_portal.c" "voice_link.c" "i2c_lock.c"
     INCLUDE_DIRS "."
     REQUIRES esp32-camera esp_wifi esp_http_server nvs_flash app_update ESP32_VL53L0X esp_psram json driver esp_timer esp_http_client esp-tls mbedtls
 )
@@ -20,4 +20,13 @@ endif()
 #   idf.py -DORBIE_OPEN_AP=1 build
 if(ORBIE_OPEN_AP)
     target_compile_definitions(${COMPONENT_LIB} PRIVATE ORBIE_OPEN_AP=1)
+endif()
+
+# Dev convenience: accept firmware uploads from the owner's LAN, not only from
+# the robot's own AP. The AP shares the STA's channel and is awkward to join
+# while the robot is online. Bench only - it lets any device on the network
+# reflash the robot.
+#   idf.py -DORBIE_OTA_ALLOW_LAN=1 build
+if(ORBIE_OTA_ALLOW_LAN)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE ORBIE_OTA_ALLOW_LAN=1)
 endif()

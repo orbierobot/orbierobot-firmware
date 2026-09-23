@@ -115,8 +115,18 @@ static const char CONTROL_PAGE_HTML[] =
 "<p id='ver' style='text-align:center;color:#5a5a5a;font-size:11px;margin-top:14px'></p>"
 
 "</div><script>"
-/* The stream lives on port 81; build that from wherever this page was served. */
-"document.getElementById('stream').src='http://'+location.hostname+':81/stream';"
+/* Poll single frames rather than using the MJPEG stream on :81. Safari and
+   other WebKit browsers do not render multipart/x-mixed-replace in an <img>,
+   so the stream shows nothing there while working fine everywhere else. A
+   snapshot every 250ms is ~4fps, which is enough to drive by and works in
+   every browser. The :81 stream is still there for anything that wants it. */
+"var camBusy=false;"
+"function cam(){if(camBusy)return;camBusy=true;"
+"var i=new Image();"
+"i.onload=function(){document.getElementById('stream').src=i.src;camBusy=false;};"
+"i.onerror=function(){camBusy=false;};"
+"i.src='/capture?t='+Date.now();}"
+"setInterval(cam,400);cam();"
 
 "function show(t,bad){var r=document.getElementById('res');r.textContent=t;r.className=bad?'err':'';}"
 "function t(w){show('Running '+w+'&#8230;');fetch('/test?run='+w).then(r=>r.json())"
@@ -128,8 +138,12 @@ static const char CONTROL_PAGE_HTML[] =
    it fetches the PCM itself and hands the bytes straight to /say - no queue,
    no polling, and it works even when Redis is down. */
 "var API='';"
+/* Resolve the cloud address on demand rather than relying on a variable that
+   is filled asynchronously at page load - one failed or slow /api/whoami left
+   it empty and every Speak press failed with "Cloud address unknown". */
+"function api(){if(API)return Promise.resolve(API);"
+"return fetch('/api/whoami').then(r=>r.json()).then(function(d){API=d.api;return API;});}"
 "function say(t){t=(t||'').trim();if(!t){show('Nothing to say',1);return;}"
-"if(!API){show('Cloud address unknown',1);return;}"
 "var b=document.getElementById('saybtn');b.disabled=true;show('Synthesising\u2026');"
 "fetch(API+'/api/speak',{method:'POST',headers:{'Content-Type':'application/json'},"
 "body:JSON.stringify({text:t})})"
@@ -193,5 +207,5 @@ static const char CONTROL_PAGE_HTML[] =
 "'Object <b>'+d.temp_object.toFixed(1)+'°C</b><br>'+"
 "'Laser <b>'+(d.laser?'on':'off')+'</b> &nbsp; Drive <b>'+d.drive+'</b> &nbsp; Turn <b>'+d.turn+'</b>'+"
 "(d.wifi_ssid?' &nbsp; Wi-Fi <b>'+d.wifi_ssid+'</b> '+(d.wifi_ip||''):'');"
-"}).catch(function(){});},700);"
+"}).catch(function(){});},1500);"
 "</script></body></html>";

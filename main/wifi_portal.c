@@ -396,9 +396,13 @@ static const char PORTAL_HTML[] =
 "</style></head><body>"
 "<h1>Connect Orbie to Wi-Fi</h1>"
 "<p class='sub'>Pick your home network so Orbie can reach the internet.</p>"
-"<a id='openbrowser' href='http://" PORTAL_IP "/' target='_blank' rel='noopener'>Open Orbie in your browser</a>"
-"<p class='addr'>No address bar here? Open <b>" PORTAL_IP "</b> in Safari or Chrome.</p>"
-"<p class='addr'><a href='http://" PORTAL_IP "/' target='_blank' rel='noopener' "
+/* Relative, NOT the fixed AP address. This page is served both from the
+   robot's own AP and, via /portal?setup=1, from its address on the owner's
+   LAN. Hardcoding 192.168.4.1 made both links dead ends for anyone who
+   reached the page over their home network. "/" is correct either way. */
+"<a id='openbrowser' href='/' target='_blank' rel='noopener'>Open Orbie in your browser</a>"
+"<p class='addr'>No address bar here? Open <b id='host'>" PORTAL_IP "</b> in Safari or Chrome.</p>"
+"<p class='addr'><a href='/' target='_blank' rel='noopener' "
 "style='color:#9ab'>Open the control panel &rarr;</a></p>"
 "<p class='addr' id='fw'></p>"
 "<label>Network</label>"
@@ -419,6 +423,9 @@ static const char PORTAL_HTML[] =
 "function show(c,t){var m=document.getElementById('msg');m.className=c;m.textContent=t;}"
 "fetch('/api/whoami').then(r=>r.json()).then(function(d){"
 "document.getElementById('fw').textContent=d.robot+' \u00b7 firmware '+d.version;}).catch(function(){});"
+/* Show the address actually in use. On the AP that is 192.168.4.1 anyway;
+   over the LAN the baked-in default would send the reader somewhere dead. */
+"(function(){var h=document.getElementById('host');if(h)h.textContent=location.host;})();"
 "function togglePw(){var i=document.getElementById('pass'),e=document.getElementById('eye');"
 "var on=i.type==='password';i.type=on?'text':'password';e.textContent=on?'Hide':'Show';"
 "e.setAttribute('aria-label',on?'Hide password':'Show password');i.focus();}"
@@ -450,7 +457,7 @@ static const char PORTAL_HTML[] =
 "h.style.display='block';"
 /* The captive sheet is a cut-down browser and handles MJPEG poorly, so hand
    over to the real control page rather than trying to stream inside it. */
-"setTimeout(function(){location.href='http://" PORTAL_IP "/';},1800);return;}"
+"setTimeout(function(){location.href='/';},1800);return;}"
 "if(d.state=='failed'){show('err',d.detail||'Could not connect.');"
 "document.getElementById('go').disabled=false;return;}"
 "if(n>40){show('err','Timed out.');document.getElementById('go').disabled=false;return;}"
@@ -485,16 +492,20 @@ static esp_err_t connected_handoff(httpd_req_t *req)
         "#cpd{color:#7ee2a8;font-size:12px;min-height:16px}</style></head><body>"
         "<h1>Orbie is online</h1>"
         "<p>Connected to <b>%s</b><br>Firmware <b>%s</b></p>"
-        "<a href='http://" PORTAL_IP "/'>Open the controls</a>"
-        "<a class='sec' href='http://" PORTAL_IP "/' target='_blank' rel='noopener'>"
+        /* Relative links: whatever host reached this page can reach these,
+         * whether that is the AP address or the robot's address on the
+         * owner's LAN. A fixed 192.168.4.1 is wrong for the latter. */
+        "<a href='/'>Open the controls</a>"
+        "<a class='sec' href='/' target='_blank' rel='noopener'>"
         "Open in Safari / Chrome</a>"
         "<p>This sign-in window has no address bar and is a limited browser, so "
         "the camera may not load here.</p>"
-        "<div class='url'><code id='u'>http://" PORTAL_IP "/</code>"
+        "<div class='url'><code id='u'></code>"
         "<button onclick='cp()'>Copy</button></div>"
         "<p id='cpd'></p>"
         "<p>On <b>%s</b> the same page is at <code>http://%s</code>.</p>"
-        "<script>function cp(){var t=document.getElementById('u').textContent;"
+        "<script>document.getElementById('u').textContent=location.origin+'/';"
+        "function cp(){var t=document.getElementById('u').textContent;"
         "function done(){document.getElementById('cpd').textContent='Copied - paste it into Safari.';}"
         "if(navigator.clipboard&&navigator.clipboard.writeText){"
         "navigator.clipboard.writeText(t).then(done).catch(sel);}else{sel();}"

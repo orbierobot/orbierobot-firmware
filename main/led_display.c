@@ -4,6 +4,7 @@
 #include "joystick_expressions.h"
 #include "expr_look_center_to_bliss.h"
 #include "demo_expressions.h"
+#include "i2c_lock.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -51,6 +52,7 @@ static uint8_t mirror_cs(uint8_t cs) {
 
 void init_display(i2c_master_bus_handle_t bus)
 {
+    i2c_lock_init();
     ESP_LOGI(TAG, "Initializing LED face display...");
 
     /* Init IC1 (left half, x=0..7): ADDR1=GND, ADDR2=GND => 0x50 */
@@ -87,8 +89,20 @@ void init_display(i2c_master_bus_handle_t bus)
     /* Push black to hardware */
     display_show();
 
-    display_ok = true;
-    ESP_LOGI(TAG, "LED face display ready");
+    /* Ask both chips whether they are actually there. Without this display_ok
+     * went true even when every single write NACKed, and the animation loop
+     * then retried forever - tens of thousands of error lines, a face that
+     * never lit, and a robot that looked hung. */
+    bool left  = i2c_master_probe(bus, 0x50, 100) == ESP_OK;
+    bool right = i2c_master_probe(bus, 0x5f, 100) == ESP_OK;
+    display_ok = left && right;
+
+    if (display_ok) {
+        ESP_LOGI(TAG, "LED face display ready");
+    } else {
+        ESP_LOGE(TAG, "LED face display NOT responding (0x50:%s 0x5f:%s) - face disabled",
+                 left ? "ok" : "no", right ? "ok" : "no");
+    }
 }
 
 void display_set_pixel(int x, int y, uint8_t r, uint8_t g, uint8_t b)
@@ -128,8 +142,12 @@ void display_clear(void)
 void display_show(void)
 {
     if (!display_ok) return;
+    /* Both ICs in one critical section: a sensor read landing between them
+     * leaves the two halves of the face showing different frames. */
+    if (!i2c_lock_take(200)) return;   /* drop a frame rather than stall */
     is31fl3733_set_pwm(&ic1, _buf1);
     is31fl3733_set_pwm(&ic2, _buf2);
+    i2c_lock_give();
 }
 
 void display_draw_rgb_frame(const uint8_t *data)
