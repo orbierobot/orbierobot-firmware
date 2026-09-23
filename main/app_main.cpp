@@ -20,6 +20,7 @@
 #include "esp_psram.h"
 #include "cJSON.h"
 #include "esp_rom_sys.h"
+#include "esp_heap_caps.h"
 #include "i2c_lock.h"
 #include "led_display.h"
 #include "boot_sound.h"
@@ -1535,6 +1536,13 @@ static void start_webserver(void)
      * or ERR_CONNECTION_RESET - and every button on the page starts failing.
      * lru_purge_enable drops the oldest idle socket instead of refusing. */
     config.max_open_sockets = 10;
+    /* 8KB, not the 4KB default. The portal's hand-off page builds a ~2.6KB
+     * response, and a captive-portal probe from a phone joining the AP runs
+     * it on this task - which overflowed the stack and rebooted the robot
+     * the moment a phone connected to ORBIE_xxxx. The buffer is static now
+     * too, but the margin belongs here: any handler that formats a page is
+     * one careless local away from the same crash. */
+    config.stack_size = 8192;
     config.lru_purge_enable = true;
     config.recv_wait_timeout = 10;
     config.send_wait_timeout = 10;
@@ -1652,21 +1660,47 @@ static void vl53_task(void *pv)
         }
         if (!inited) {
             round++;
-            ESP_LOGE(TAG, "VL53L0X init failed (round %d) - retrying in 5s", round);
-            vTaskDelay(pdMS_TO_TICKS(5000));
+            /* Back off, and stop shouting. On a robot whose sensor has failed
+             * this never succeeds, and each round is a burst of I2C errors
+             * from the driver - retrying every 5s forever filled the console
+             * and kept the shared bus busy for a device that is not coming
+             * back. Slow to a minute, and say so once. */
+            int wait_ms = round < 3 ? 5000 : 60000;
+            if (round == 3) {
+                ESP_LOGE(TAG, "VL53L0X still absent after %d rounds - retrying quietly every 60s", round);
+            } else if (round < 3) {
+                ESP_LOGE(TAG, "VL53L0X init failed (round %d) - retrying in 5s", round);
+            }
+            vTaskDelay(pdMS_TO_TICKS(wait_ms));
         }
     }
     ESP_LOGI(TAG, "VL53L0X ready");
+
+    /* Back off when the sensor stops answering. A unit whose VL53L0X has died
+     * still returns false ten times a second, and the driver logs an I2C
+     * error for each one - thousands of lines that bury everything else in
+     * the console and keep the shared bus busy for no benefit. Slow down
+     * instead, and keep trying quietly in case it comes back. */
+    int consecutive_failures = 0;
     while (true) {
         uint16_t distance = 0;
         if (vl->read(&distance)) {
+            if (consecutive_failures >= 20) {
+                ESP_LOGI(TAG, "VL53L0X responding again");
+            }
+            consecutive_failures = 0;
             g_distance_mm = distance;
             if (g_laser_auto) {
                 g_laser_enabled = (distance <= 200);
                 gpio_set_level(LASER_GPIO, g_laser_enabled ? 0 : 1); /* active-low */
             }
+        } else {
+            if (++consecutive_failures == 20) {
+                ESP_LOGW(TAG, "VL53L0X not responding - polling every 2s from here");
+                g_distance_mm = 0;
+            }
         }
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(consecutive_failures >= 20 ? 2000 : 100));
     }
 }
 
@@ -1783,6 +1817,7 @@ extern "C" void app_main(void)
      * See ptt_watch_task. */
     xTaskCreate([](void *) {
         bool started = false;
+        bool announced = false;
         while (true) {
             if (!started && wifi_portal_state() == ORBIE_WIFI_CONNECTED) {
                 voice_link_start(api_base, wifi_ssid, device_key,
@@ -1790,9 +1825,59 @@ extern "C" void app_main(void)
                 started = true;
                 ESP_LOGI(TAG, "push-to-talk link started against %s", api_base);
             }
+
+            /* Tell the owner, out loud, the first time we come online.
+             *
+             * Setting up Wi-Fi from a phone is a leap of faith: you type a
+             * password into an app and nothing visible happens. The robot has
+             * a speaker and, at this exact moment, its first internet
+             * connection - so it can say so in its own voice. The face turns
+             * happy at the same time, which is the part that still works if
+             * the speaker is dead or synthesis fails. */
+            if (started && !announced) {
+                announced = true;
+                display_play_named("heart");
+                /* In its OWN task, with a real stack. voice_link_say() opens a
+                 * TLS connection, and an mbedTLS handshake needs 6-8KB -
+                 * several times what this watcher was given. Calling it from
+                 * here overflowed the stack and rebooted the robot every time
+                 * it came online. It also blocks for seconds, which this loop
+                 * should not. */
+                ESP_LOGI(TAG, "announcing (free internal heap: %u)",
+                         (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
+                BaseType_t created = xTaskCreate([](void *) {
+                    /* Retry. The first attempt lands about two seconds after
+                     * the robot gets its IP, and DNS is usually not up yet -
+                     * it failed with ESP_ERR_HTTP_CONNECT in 141ms, far too
+                     * fast to have tried the network at all. A few seconds of
+                     * patience is the whole fix. */
+                    bool said = false;
+                    for (int attempt = 1; attempt <= 4 && !said; attempt++) {
+                        vTaskDelay(pdMS_TO_TICKS(attempt == 1 ? 3000 : 5000));
+                        said = voice_link_say("I'm online. Nice to meet you.");
+                        if (!said) {
+                            ESP_LOGW(TAG, "announce attempt %d/4 failed", attempt);
+                        }
+                    }
+                    if (!said) {
+                        ESP_LOGW(TAG, "could not announce - playing a chime instead");
+                        play_beep();
+                    }
+                    vTaskDelete(NULL);
+                }, "announce", 12288, NULL, 3, NULL);
+                /* A task stack this size competes with BLE, Wi-Fi and the
+                 * camera for internal RAM, and xTaskCreate just returns
+                 * pdFAIL when it cannot get it - silently, if nobody looks.
+                 * That is exactly what happened: the robot came online and
+                 * said nothing, with no error anywhere. */
+                if (created != pdPASS) {
+                    ESP_LOGE(TAG, "announce task would not start - chime instead");
+                    play_beep();
+                }
+            }
             vTaskDelay(pdMS_TO_TICKS(3000));
         }
-    }, "ptt_watch", 3072, NULL, 2, NULL);
+    }, "ptt_watch", 4096, NULL, 2, NULL);
 
     xTaskCreate(motor_monitor_task, "motor_mon", 4096, NULL, 1, NULL);
         xTaskCreate(vl53_task, "vl53", 8192, NULL, 5, NULL);

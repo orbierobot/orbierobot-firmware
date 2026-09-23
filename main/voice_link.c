@@ -207,3 +207,63 @@ void voice_link_start(const char *api_base,
     /* 8KB: TLS needs a few KB of stack on top of the HTTP client. */
     xTaskCreate(voice_task, "voice_link", 8192, NULL, 4, NULL);
 }
+
+bool voice_link_say(const char *text)
+{
+    if (!text || !text[0] || !s_api[0] || !s_play) return false;
+
+    ESP_LOGI(TAG, "announcing: \"%.40s\"", text);
+
+    char url[200];
+    snprintf(url, sizeof(url), "%s/api/speak", s_api);
+
+    /* The server caps the text, but bound it here too - a runaway caller
+     * should not spend money on a minute of synthesis. */
+    char body[320];
+    int n = snprintf(body, sizeof(body), "{\"text\":\"%.200s\"}", text);
+    if (n <= 0 || n >= (int)sizeof(body)) return false;
+
+    esp_http_client_config_t cfg = {
+        .url = url,
+        .method = HTTP_METHOD_POST,
+        .timeout_ms = 45000,             /* synthesis is slower than a poll */
+        .crt_bundle_attach = esp_crt_bundle_attach,
+        .buffer_size = 2048,
+    };
+    esp_http_client_handle_t c = esp_http_client_init(&cfg);
+    if (!c) return false;
+    add_key(c);
+    esp_http_client_set_header(c, "Content-Type", "application/json");
+
+    bool ok = false;
+    esp_err_t oerr = esp_http_client_open(c, n);
+    if (oerr != ESP_OK) {
+        ESP_LOGW(TAG, "speak: open failed: %s", esp_err_to_name(oerr));
+    } else if (esp_http_client_write(c, body, n) != n) {
+        ESP_LOGW(TAG, "speak: write failed");
+    } else {
+        esp_http_client_fetch_headers(c);
+        if (esp_http_client_get_status_code(c) == 200) {
+            /* static: this runs on a task that also carries an mbedTLS
+             * handshake, and a kilobyte of stack is worth not spending. Only
+             * ever one caller at a time. */
+            static uint8_t buf[1024];
+            bool first = true;
+            int total = 0;
+            while (true) {
+                int r = esp_http_client_read(c, (char *)buf, sizeof(buf));
+                if (r <= 0) break;
+                s_play(buf, r, first);
+                first = false;
+                total += r;
+            }
+            ok = total > 0;
+            ESP_LOGI(TAG, "said %d bytes", total);
+        } else {
+            ESP_LOGW(TAG, "speak returned %d", esp_http_client_get_status_code(c));
+        }
+    }
+    esp_http_client_close(c);
+    esp_http_client_cleanup(c);
+    return ok;
+}

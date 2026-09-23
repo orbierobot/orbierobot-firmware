@@ -177,10 +177,14 @@ static void start_advertising(void)
     struct ble_gap_adv_params params = { 0 };
     params.conn_mode = BLE_GAP_CONN_MODE_UND;
     params.disc_mode = BLE_GAP_DISC_MODE_GEN;
-    // Slow advertising (~500-800ms) so BLE doesn't starve Wi-Fi on the shared
-    // 2.4GHz radio — keeps the camera stream/control responsive. Units: 0.625ms.
-    params.itvl_min = 0x320;
-    params.itvl_max = 0x500;
+    /* 100-200ms. The previous 500-800ms was chosen to keep BLE out of Wi-Fi's
+     * way on the shared 2.4GHz radio, but with the STA, the softAP, the
+     * camera and TLS polling all competing, adverts that rare never reached
+     * the phone at all - it scanned for ten seconds and saw every other
+     * device in the flat except this one. Discovery is a brief, one-off cost;
+     * being undiscoverable is a permanent one. Units: 0.625ms. */
+    params.itvl_min = 0x00A0;
+    params.itvl_max = 0x0140;
     int rc = ble_gap_adv_start(s_addr_type, NULL, BLE_HS_FOREVER, &params, gap_event, NULL);
     if (rc != 0) {
         ESP_LOGE(TAG, "adv_start failed: %d", rc);
@@ -223,8 +227,13 @@ void ble_prov_set_status_reason(ble_prov_status_t status, uint8_t reason)
 
 void ble_prov_init(void)
 {
+    /* The Wi-Fi STA MAC, NOT ESP_MAC_BT. On the ESP32-S3 the Bluetooth MAC is
+     * the base MAC + 2, so the BT-derived name came out "Orbie-E50A" on a
+     * robot whose SSID and robot id are both ORBIE_E508 - two names for one
+     * machine, and the mismatch is invisible unless you know the derivation.
+     * One identity everywhere: ORBIE_E508 / Orbie-E508. */
     uint8_t mac[6] = { 0 };
-    esp_read_mac(mac, ESP_MAC_BT);
+    esp_read_mac(mac, ESP_MAC_WIFI_STA);
     snprintf(s_name, sizeof(s_name), "Orbie-%02X%02X", mac[4], mac[5]);
 
     esp_err_t err = nimble_port_init();

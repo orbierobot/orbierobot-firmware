@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "esp_timer.h"
 #include "esp_log.h"
 #include "esp_wifi.h"
 #include "esp_app_desc.h"
@@ -491,7 +492,9 @@ static esp_err_t connected_handoff(httpd_req_t *req)
 {
     /* Grew when the copy-link and second hyperlink were added; -Werror=
      * format-truncation catches this the moment it is too small. */
-    char page[2600];
+    /* static: 2.6KB is most of an httpd task's stack, and httpd serves one
+     * request per task at a time, so there is no reason to carry it there. */
+    static char page[2600];
     snprintf(page, sizeof(page),
         "<!doctype html><html><head><meta charset='utf-8'>"
         "<meta name='viewport' content='width=device-width,initial-scale=1'>"
@@ -626,6 +629,22 @@ void wifi_portal_set_credentials(const char *ssid, const char *pass)
 void wifi_portal_scan_json(char *out, size_t out_len)
 {
     if (!out || out_len < 3) return;
+
+    /* Reuse a recent result. The networks around a robot do not change in a
+     * minute, and re-scanning on every BLE connect costs a second of the
+     * user staring at "finding networks" - and takes the radio off-channel
+     * while the app is trying to talk to it. */
+    static char   cached[1024];
+    static int64_t cached_at_us = 0;
+    const int64_t CACHE_US = 60 * 1000000LL;
+
+    int64_t now = esp_timer_get_time();
+    if (cached[0] && (now - cached_at_us) < CACHE_US) {
+        strlcpy(out, cached, out_len);
+        ESP_LOGI(TAG, "returning cached scan (%d bytes)", (int)strlen(cached));
+        return;
+    }
+
     strlcpy(out, "[]", out_len);
 
     wifi_scan_config_t cfg = {
@@ -634,7 +653,7 @@ void wifi_portal_scan_json(char *out, size_t out_len)
         /* Short dwell per channel. The robot is usually already associated
          * when the app asks for a list, and every millisecond off-channel is
          * a millisecond it is not serving its own connection. */
-        .scan_time = { .active = { .min = 40, .max = 120 } },
+        .scan_time = { .active = { .min = 30, .max = 80 } },
     };
     if (esp_wifi_scan_start(&cfg, true) != ESP_OK) return;
 
@@ -647,14 +666,33 @@ void wifi_portal_scan_json(char *out, size_t out_len)
     if (!recs) return;
 
     if (esp_wifi_scan_get_ap_records(&n, recs) == ESP_OK) {
+        /* A flat array of SSID strings - ["Home","Office"] - because that is
+         * what the app parses. Objects with rssi look more useful but the
+         * app's whereType<String>() silently drops every one, leaving it to
+         * wait forever on a list that was there all along. The strongest
+         * signal comes first regardless, since esp_wifi sorts by rssi. */
         size_t w = 0;
         w += snprintf(out + w, out_len - w, "[");
         for (uint16_t i = 0; i < n && w < out_len - 40; i++) {
-            if (!recs[i].ssid[0]) continue;
-            w += snprintf(out + w, out_len - w, "%s{\"ssid\":\"%s\",\"rssi\":%d}",
-                          w > 1 ? "," : "", (const char *)recs[i].ssid, recs[i].rssi);
+            const char *ssid = (const char *)recs[i].ssid;
+            if (!ssid[0]) continue;
+
+            /* A quote or backslash in an SSID would produce invalid JSON and
+             * the app would parse nothing at all, so skip those rather than
+             * break the whole list for one odd name. */
+            if (strchr(ssid, '"') || strchr(ssid, '\\')) continue;
+
+            bool dup = false;                 /* the same AP on two bands */
+            for (uint16_t j = 0; j < i; j++) {
+                if (strcmp((const char *)recs[j].ssid, ssid) == 0) { dup = true; break; }
+            }
+            if (dup) continue;
+
+            w += snprintf(out + w, out_len - w, "%s\"%s\"", w > 1 ? "," : "", ssid);
         }
         snprintf(out + w, out_len - w, "]");
+        strlcpy(cached, out, sizeof(cached));
+        cached_at_us = now;
     }
     free(recs);
 }

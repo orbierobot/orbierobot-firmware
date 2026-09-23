@@ -63,6 +63,18 @@ void voice_link_start(const char *api_base,
  */
 void voice_link_set_key(const char *device_key);
 
+/**
+ * @brief Say something out loud, now, in Orbie's voice.
+ *
+ * Posts @p text to /api/speak and streams the PCM straight to the speaker,
+ * the same path a push-to-talk answer takes. Blocking, and it needs the
+ * internet, so call it from a task that can afford a few seconds - not from
+ * an event handler.
+ *
+ * @return true if audio played.
+ */
+bool voice_link_say(const char *text);
+
 /** @brief Upload a frame on the next poll, rather than waiting for the timer. */
 void voice_link_request_frame(void);
 
