@@ -29,3 +29,14 @@ CONFIG_LWIP_MAX_SOCKETS=16
 # FreeRTOS / logging
 CONFIG_FREERTOS_HZ=1000
 CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+
+# BLE provisioning (NimBLE). The app sets up Wi-Fi over BLE, so the owner
+# never has to join the robot's AP first - the captive portal stays as the
+# fallback for anyone without the app.
+CONFIG_BT_ENABLED=y
+CONFIG_BT_NIMBLE_ENABLED=y
+CONFIG_BT_NIMBLE_ROLE_PERIPHERAL=y
+CONFIG_BT_NIMBLE_ROLE_BROADCASTER=y
+CONFIG_BT_NIMBLE_ROLE_CENTRAL=n
+CONFIG_BT_NIMBLE_ROLE_OBSERVER=n
+CONFIG_BT_NIMBLE_MAX_CONNECTIONS=1

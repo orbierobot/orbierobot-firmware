@@ -1,4 +1,5 @@
 #include "wifi_portal.h"
+#include "ble_prov.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -209,7 +210,20 @@ static void on_wifi_event(void *arg, esp_event_base_t base, int32_t id, void *da
          * entirely, which is how "Ayodhya" was abandoned in 2.8 seconds. */
         bool hopeless = (s_reason == WIFI_REASON_NO_AP_FOUND) && !s_trying_stored;
 
-        if (s_state == ORBIE_WIFI_CONNECTING && s_retries < s_max_retries && !hopeless) {
+        if (s_state == ORBIE_WIFI_CONNECTED) {
+            /* We were online and fell off: a router reboot, a roam, or the
+             * brief off-channel hop of a Wi-Fi scan. None of those mean the
+             * credentials are wrong, so reconnect indefinitely instead of
+             * giving up. Falling through to FAILED here left the robot with
+             * no Wi-Fi until someone power-cycled it, and made every BLE
+             * network scan knock it offline. */
+            ESP_LOGW(TAG, "lost \"%s\" (reason %d - %s), reconnecting",
+                     s_ssid, s_reason, reason_text(s_reason));
+            s_state   = ORBIE_WIFI_CONNECTING;
+            s_retries = 0;
+            s_ip[0]   = '\0';
+            esp_wifi_connect();
+        } else if (s_state == ORBIE_WIFI_CONNECTING && s_retries < s_max_retries && !hopeless) {
             s_retries++;
             ESP_LOGW(TAG, "disconnected (reason %d), retry %d/%d",
                      s_reason, s_retries, s_max_retries);
@@ -219,6 +233,9 @@ static void on_wifi_event(void *arg, esp_event_base_t base, int32_t id, void *da
             s_ip[0] = '\0';
             ESP_LOGW(TAG, "giving up on \"%s\": reason %d - %s",
                      s_ssid, s_reason, reason_text(s_reason));
+            /* Tell the phone too, with the reason, or the app's setup screen
+               sits on "connecting" forever with no way to know it failed. */
+            ble_prov_set_status_reason(BLE_PROV_FAILED, (uint8_t)s_reason);
         }
     } else if (base == IP_EVENT && id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t *e = (ip_event_got_ip_t *)data;
@@ -226,6 +243,7 @@ static void on_wifi_event(void *arg, esp_event_base_t base, int32_t id, void *da
         s_state   = ORBIE_WIFI_CONNECTED;
         s_retries = 0;
         ESP_LOGI(TAG, "connected to \"%s\", IP %s", s_ssid, s_ip);
+        ble_prov_set_status(BLE_PROV_CONNECTED);
     }
 }
 
@@ -596,6 +614,49 @@ static esp_err_t scan_get(httpd_req_t *req)
     cJSON_free(out);
     cJSON_Delete(arr);
     return ESP_OK;
+}
+
+void wifi_portal_set_credentials(const char *ssid, const char *pass)
+{
+    if (!ssid || !ssid[0]) return;
+    nets_remember(ssid, pass ? pass : "");
+    sta_connect(ssid, pass ? pass : "");
+}
+
+void wifi_portal_scan_json(char *out, size_t out_len)
+{
+    if (!out || out_len < 3) return;
+    strlcpy(out, "[]", out_len);
+
+    wifi_scan_config_t cfg = {
+        .show_hidden = false,
+        .scan_type = WIFI_SCAN_TYPE_ACTIVE,
+        /* Short dwell per channel. The robot is usually already associated
+         * when the app asks for a list, and every millisecond off-channel is
+         * a millisecond it is not serving its own connection. */
+        .scan_time = { .active = { .min = 40, .max = 120 } },
+    };
+    if (esp_wifi_scan_start(&cfg, true) != ESP_OK) return;
+
+    uint16_t n = 0;
+    esp_wifi_scan_get_ap_num(&n);
+    if (n == 0) return;
+    if (n > 24) n = 24;                    /* the phone shows a short list */
+
+    wifi_ap_record_t *recs = calloc(n, sizeof(*recs));
+    if (!recs) return;
+
+    if (esp_wifi_scan_get_ap_records(&n, recs) == ESP_OK) {
+        size_t w = 0;
+        w += snprintf(out + w, out_len - w, "[");
+        for (uint16_t i = 0; i < n && w < out_len - 40; i++) {
+            if (!recs[i].ssid[0]) continue;
+            w += snprintf(out + w, out_len - w, "%s{\"ssid\":\"%s\",\"rssi\":%d}",
+                          w > 1 ? "," : "", (const char *)recs[i].ssid, recs[i].rssi);
+        }
+        snprintf(out + w, out_len - w, "]");
+    }
+    free(recs);
 }
 
 static esp_err_t connect_post(httpd_req_t *req)

@@ -25,6 +25,7 @@
 #include "boot_sound.h"
 #include "control_page.h"
 #include "voice_link.h"
+#include "ble_prov.h"
 #include <stdarg.h>
 #include "wifi_portal.h"
 #include "driver/i2c_master.h"
@@ -89,6 +90,12 @@ static char ota_token[24] = "";
  * not a reflash of every robot in the field. */
 #define API_NVS_NS   "orbie"
 #define API_NVS_KEY  "api_base"
+
+/* The server's per-robot secret. Minted by /api/devices/register and written
+ * here by the app over the LAN, so it is never compiled in and never shared
+ * between units - a leak from one robot cannot be used to drive another. */
+#define KEY_NVS_KEY  "device_key"
+static char device_key[40] = "";
 #define API_BASE_DEFAULT "https://orbie-apis.vercel.app"
 static char api_base[96] = API_BASE_DEFAULT;
 
@@ -101,6 +108,44 @@ static void api_base_load(void)
     if (nvs_get_str(h, API_NVS_KEY, tmp, &len) == ESP_OK && tmp[0]) {
         strlcpy(api_base, tmp, sizeof(api_base));
     }
+    nvs_close(h);
+}
+
+static void device_key_load(void)
+{
+    nvs_handle_t h;
+    esp_err_t err = nvs_open(API_NVS_NS, NVS_READONLY, &h);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "device key: nvs_open failed (%s)", esp_err_to_name(err));
+        return;
+    }
+    size_t len = sizeof(device_key);
+    char tmp[40];
+    err = nvs_get_str(h, KEY_NVS_KEY, tmp, &len);
+    if (err == ESP_OK && tmp[0]) {
+        strlcpy(device_key, tmp, sizeof(device_key));
+        ESP_LOGI(TAG, "device key loaded (%d chars)", (int)strlen(device_key));
+    } else {
+        /* Not an error on a fresh robot - it just has not been paired yet.
+         * Anything other than NOT_FOUND is worth seeing, because a key that
+         * silently fails to load looks exactly like a server rejecting us. */
+        ESP_LOGW(TAG, "device key: not loaded (%s)", esp_err_to_name(err));
+    }
+    nvs_close(h);
+}
+
+static void device_key_save(const char *key)
+{
+    nvs_handle_t h;
+    esp_err_t err = nvs_open(API_NVS_NS, NVS_READWRITE, &h);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "device key: nvs_open rw failed (%s)", esp_err_to_name(err));
+        return;
+    }
+    err = nvs_set_str(h, KEY_NVS_KEY, key);
+    if (err == ESP_OK) err = nvs_commit(h);
+    if (err != ESP_OK) ESP_LOGE(TAG, "device key: save failed (%s)", esp_err_to_name(err));
+    else               ESP_LOGI(TAG, "device key: saved to NVS");
     nvs_close(h);
 }
 
@@ -1229,13 +1274,23 @@ static esp_err_t whoami_handler(httpd_req_t *req)
         api_base_save(api_base);
         ESP_LOGI(TAG, "API base set to %s", api_base);
     }
+    if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK &&
+        httpd_query_key_value(query, "key", val, sizeof(val)) == ESP_OK && val[0]) {
+        strlcpy(device_key, val, sizeof(device_key));
+        device_key_save(device_key);
+        /* Never log the key itself - this console is on USB and in scrollback. */
+        ESP_LOGI(TAG, "device key stored (%d chars)", (int)strlen(device_key));
+        voice_link_set_key(device_key);
+    }
 
     const esp_app_desc_t *desc = esp_app_get_description();
     char out[320];
     snprintf(out, sizeof(out),
-             "{\"robot\":\"%s\",\"ip\":\"%s\",\"api\":\"%s\",\"version\":\"%s\",\"built\":\"%s %s\"}",
+             "{\"robot\":\"%s\",\"ip\":\"%s\",\"api\":\"%s\",\"version\":\"%s\","
+             "\"built\":\"%s %s\",\"registered\":%s}",
              wifi_ssid, wifi_portal_ip(), api_base,
-             desc->version, desc->date, desc->time);
+             desc->version, desc->date, desc->time,
+             device_key[0] ? "true" : "false");
     httpd_resp_set_type(req, "application/json");
     httpd_resp_sendstr(req, out);
     return ESP_OK;
@@ -1537,6 +1592,11 @@ static void start_webserver(void)
     wifi_portal_register(ctrl);
     wifi_portal_start_dns();
 
+    /* BLE provisioning runs alongside the captive portal, not instead of it.
+     * The app pairs over BLE and never has to leave the owner's Wi-Fi; anyone
+     * without the app still gets the portal on the robot's own AP. */
+    ble_prov_init();
+
     ESP_LOGI(TAG, "Servers: port 80 (control), port 81 (MJPEG stream)");
 }
 
@@ -1687,7 +1747,20 @@ extern "C" void app_main(void)
     /* Initialize speaker */
     init_speaker();
     volume_load();   /* before the greeting, which is the loudest thing we play */
+    /* NVS must be up before anything reads it. It used to be initialised
+     * inside start_wifi_ap(), which runs ~15s later, so both of these loads
+     * failed with ESP_ERR_NVS_NOT_INITIALIZED and silently fell back to
+     * defaults - the device key looked like it saved, then vanished on every
+     * reboot and the server answered 401. Calling it twice is harmless. */
+    esp_err_t nvs_err = nvs_flash_init();
+    if (nvs_err == ESP_ERR_NVS_NO_FREE_PAGES || nvs_err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        nvs_err = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(nvs_err);
+
     api_base_load();
+    device_key_load();
     ESP_LOGI(TAG, "Volume: %d%%", volume_pct);
 
     /* Boot animation: LED face + voice greeting playing in parallel */
@@ -1712,7 +1785,7 @@ extern "C" void app_main(void)
         bool started = false;
         while (true) {
             if (!started && wifi_portal_state() == ORBIE_WIFI_CONNECTED) {
-                voice_link_start(api_base, wifi_ssid, "",
+                voice_link_start(api_base, wifi_ssid, device_key,
                                  ptt_play_pcm, ptt_grab_frame, ptt_release_frame);
                 started = true;
                 ESP_LOGI(TAG, "push-to-talk link started against %s", api_base);

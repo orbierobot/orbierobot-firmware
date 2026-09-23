@@ -53,6 +53,16 @@ void voice_link_start(const char *api_base,
                       voice_frame_fn grab_jpeg,
                       voice_frame_release_fn release_jpeg);
 
+/**
+ * @brief Replace the device key used on every call.
+ *
+ * The app provisions the key over the LAN after registering the robot, which
+ * can happen long after voice_link_start(). Without this the robot would keep
+ * sending the old (or empty) key until the next reboot, and every poll would
+ * 401.
+ */
+void voice_link_set_key(const char *device_key);
+
 /** @brief Upload a frame on the next poll, rather than waiting for the timer. */
 void voice_link_request_frame(void);
 

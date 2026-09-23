@@ -33,6 +33,11 @@ static char s_err[96] = "";
 
 bool voice_link_online(void)           { return s_online; }
 const char *voice_link_last_error(void){ return s_err; }
+void voice_link_set_key(const char *device_key)
+{
+    strlcpy(s_key, device_key ? device_key : "", sizeof(s_key));
+}
+
 void voice_link_request_frame(void)    { s_want_frame = true; }
 
 static void set_err(const char *fmt, ...)

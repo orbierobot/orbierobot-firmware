@@ -1,7 +1,7 @@
 idf_component_register(
-    SRCS "app_main.cpp" "IS31FL3733.c" "led_display.c" "boot_sound.c" "wifi_portal.c" "voice_link.c" "i2c_lock.c"
+    SRCS "app_main.cpp" "IS31FL3733.c" "led_display.c" "boot_sound.c" "wifi_portal.c" "voice_link.c" "i2c_lock.c" "ble_prov.c"
     INCLUDE_DIRS "."
-    REQUIRES esp32-camera esp_wifi esp_http_server nvs_flash app_update ESP32_VL53L0X esp_psram json driver esp_timer esp_http_client esp-tls mbedtls
+    REQUIRES bt esp32-camera esp_wifi esp_http_server nvs_flash app_update ESP32_VL53L0X esp_psram json driver esp_timer esp_http_client esp-tls mbedtls
 )
 target_compile_definitions(${COMPONENT_LIB} PRIVATE
     CONFIG_OPENPAW_BOARD_NAME="$ENV{OPENPAW_BOARD}"

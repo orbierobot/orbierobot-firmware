@@ -58,6 +58,22 @@ esp_err_t wifi_portal_register(httpd_handle_t server);
 /** @brief Current STA state, for the control UI's status line. */
 orbie_wifi_state_t wifi_portal_state(void);
 
+/* ---- Used by BLE provisioning -------------------------------------------
+ *
+ * The same three operations the captive portal exposes over HTTP, callable
+ * directly. BLE provisioning needs them before the robot is on any network at
+ * all, which is the whole point: the phone can set up Wi-Fi without first
+ * joining the robot's AP.
+ */
+
+/** @brief Remember these credentials and start connecting. Same path as the
+ *         portal's /api/connect, so a BLE-provisioned network is stored and
+ *         retried on boot exactly like one entered in the web form. */
+void wifi_portal_set_credentials(const char *ssid, const char *pass);
+
+/** @brief Scan and write a JSON array of {ssid,rssi} into @p out. Blocking. */
+void wifi_portal_scan_json(char *out, size_t out_len);
+
 /** @brief SSID of the network we joined, or "" when not connected. */
 const char *wifi_portal_ssid(void);
 
