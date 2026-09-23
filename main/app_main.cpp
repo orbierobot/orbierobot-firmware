@@ -6,6 +6,7 @@
 #include "esp_log.h"
 #include "esp_netif.h"
 #include "esp_ota_ops.h"
+#include "esp_app_desc.h"
 #include "esp_system.h"
 #include "esp_timer.h"
 #include "esp_wifi.h"
@@ -1045,9 +1046,12 @@ static esp_err_t whoami_handler(httpd_req_t *req)
         ESP_LOGI(TAG, "API base set to %s", api_base);
     }
 
-    char out[240];
-    snprintf(out, sizeof(out), "{\"robot\":\"%s\",\"ip\":\"%s\",\"api\":\"%s\"}",
-             wifi_ssid, wifi_portal_ip(), api_base);
+    const esp_app_desc_t *desc = esp_app_get_description();
+    char out[320];
+    snprintf(out, sizeof(out),
+             "{\"robot\":\"%s\",\"ip\":\"%s\",\"api\":\"%s\",\"version\":\"%s\",\"built\":\"%s %s\"}",
+             wifi_ssid, wifi_portal_ip(), api_base,
+             desc->version, desc->date, desc->time);
     httpd_resp_set_type(req, "application/json");
     httpd_resp_sendstr(req, out);
     return ESP_OK;
@@ -1457,6 +1461,29 @@ extern "C" void app_main(void)
                                 vTaskDelay(pdMS_TO_TICKS(600)); } while (0)
 
     BOOT_BEACON(60, 0, 0);          /* RED: display initialised */
+
+    /* Firmware version on the face, before anything else animates. The only
+     * way to confirm an OTA actually landed without plugging in a cable. */
+    {
+        const esp_app_desc_t *desc = esp_app_get_description();
+        char shown[8] = "";
+        /* Project version looks like "1.0.4" or a git hash; the face fits four
+         * characters, so take the leading digits and dot. */
+        /* Digits only, dots dropped: "1.0.0" -> "100", "1.0.1" -> "101".
+         * Four characters is not enough for "1.0.1" with separators, and
+         * truncating it gives "1.0" - identical to 1.0.0, which would make the
+         * version useless for confirming an OTA actually landed. */
+        int n = 0;
+        for (const char *p = desc->version; *p && n < 4; p++) {
+            if (*p >= '0' && *p <= '9') shown[n++] = *p;
+            else if (*p != '.' && n > 0) break;   /* stop at a git hash suffix */
+        }
+        shown[n] = '\0';
+        if (n == 0) { strcpy(shown, "----"); }
+        ESP_LOGI(TAG, "Firmware version: %s (showing \"%s\")", desc->version, shown);
+        display_show_text4(shown, 0, 40, 80);
+        vTaskDelay(pdMS_TO_TICKS(1800));
+    }
 
     /* Initialize speaker */
     init_speaker();

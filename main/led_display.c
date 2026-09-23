@@ -188,6 +188,63 @@ void display_play_boot_animation(void)
     display_draw_rgb_frame(eyeDirectionFrames[EYE_CENTER]);
 }
 
+/* 3x5 glyphs, one byte per row, low 3 bits used. Small enough to read on a
+ * 16x8 face and still fit four characters. */
+typedef struct { char ch; uint8_t rows[5]; } glyph_t;
+
+static const glyph_t FONT[] = {
+    {'0', {0b111,0b101,0b101,0b101,0b111}},
+    {'1', {0b010,0b110,0b010,0b010,0b111}},
+    {'2', {0b111,0b001,0b111,0b100,0b111}},
+    {'3', {0b111,0b001,0b111,0b001,0b111}},
+    {'4', {0b101,0b101,0b111,0b001,0b001}},
+    {'5', {0b111,0b100,0b111,0b001,0b111}},
+    {'6', {0b111,0b100,0b111,0b101,0b111}},
+    {'7', {0b111,0b001,0b001,0b001,0b001}},
+    {'8', {0b111,0b101,0b111,0b101,0b111}},
+    {'9', {0b111,0b101,0b111,0b001,0b111}},
+    {'.', {0b000,0b000,0b000,0b000,0b010}},
+    {'-', {0b000,0b000,0b111,0b000,0b000}},
+    {'v', {0b000,0b101,0b101,0b101,0b010}},
+    {' ', {0b000,0b000,0b000,0b000,0b000}},
+};
+
+static const uint8_t *glyph_for(char ch)
+{
+    for (unsigned i = 0; i < sizeof(FONT) / sizeof(FONT[0]); i++) {
+        if (FONT[i].ch == ch) return FONT[i].rows;
+    }
+    return NULL;
+}
+
+void display_show_text4(const char *text, uint8_t r, uint8_t g, uint8_t b)
+{
+    /* Build a logical 16x8 frame and hand it to display_draw_rgb_frame, which
+     * applies the eye rotation. Writing through display_set_pixel directly
+     * would put the glyphs in physical space and render them sideways. */
+    static uint8_t frame[16 * 8 * 3];
+    memset(frame, 0, sizeof(frame));
+
+    /* 4 glyphs x 4 columns (3 wide + 1 gap) fills 16px exactly; 5 rows
+     * centred vertically in 8. */
+    for (int i = 0; i < 4 && text[i]; i++) {
+        const uint8_t *rows = glyph_for(text[i]);
+        if (!rows) continue;
+        for (int gy = 0; gy < 5; gy++) {
+            for (int gx = 0; gx < 3; gx++) {
+                if (!(rows[gy] & (1 << (2 - gx)))) continue;
+                int x = i * 4 + gx;
+                int y = gy + 1;
+                size_t idx = (size_t)(y * 16 + x) * 3;
+                frame[idx + 0] = r;
+                frame[idx + 1] = g;
+                frame[idx + 2] = b;
+            }
+        }
+    }
+    display_draw_rgb_frame(frame);
+}
+
 void display_solid(uint8_t r, uint8_t g, uint8_t b)
 {
     for (int y = 0; y < 8; y++) {

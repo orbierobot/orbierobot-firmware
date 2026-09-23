@@ -81,6 +81,7 @@ static const char CONTROL_PAGE_HTML[] =
 "<a class='link' id='talk' href='#'>Talk to Orbie (push to talk)</a>"
 "<a class='link' href='/portal?setup=1'>Wi-Fi setup</a>"
 "<a class='link' href='/update'>Firmware update</a>"
+"<p id='ver' style='text-align:center;color:#5a5a5a;font-size:11px;margin-top:14px'></p>"
 
 "</div><script>"
 /* The stream lives on port 81; build that from wherever this page was served. */
@@ -107,6 +108,7 @@ static const char CONTROL_PAGE_HTML[] =
 /* Push-to-talk is hosted over HTTPS elsewhere; pass the robot id along. */
 "fetch('/api/whoami').then(r=>r.json()).then(function(d){"
 "document.getElementById('talk').href=d.api+'/talk?robot='+encodeURIComponent(d.robot);"
+"document.getElementById('ver').textContent=d.robot+' \u00b7 firmware '+d.version+' \u00b7 built '+d.built;"
 "}).catch(function(){});"
 
 "function go(d,t){fetch('/motor?drive='+Math.round(d*255)+'&turn='+Math.round(t*255)).catch(function(){});}"

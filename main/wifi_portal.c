@@ -6,6 +6,7 @@
 
 #include "esp_log.h"
 #include "esp_wifi.h"
+#include "esp_app_desc.h"
 #include "esp_netif.h"
 #include "esp_event.h"
 #include "nvs_flash.h"
@@ -397,6 +398,7 @@ static const char PORTAL_HTML[] =
 "<p class='sub'>Pick your home network so Orbie can reach the internet.</p>"
 "<a id='openbrowser' href='http://" PORTAL_IP "/' target='_blank' rel='noopener'>Open Orbie in your browser</a>"
 "<p class='addr'>If this window closes, open <b>" PORTAL_IP "</b> in Safari or Chrome.</p>"
+"<p class='addr' id='fw'></p>"
 "<label>Network</label>"
 "<div class='row'><select id='ssid' onchange='pick()'><option>Scanning...</option></select>"
 "<button class='rescan' onclick='scan()'>Rescan</button></div>"
@@ -413,6 +415,8 @@ static const char PORTAL_HTML[] =
 "<p id='lanhint' class='sub' style='display:none;margin-top:14px'></p>"
 "<script>"
 "function show(c,t){var m=document.getElementById('msg');m.className=c;m.textContent=t;}"
+"fetch('/api/whoami').then(r=>r.json()).then(function(d){"
+"document.getElementById('fw').textContent=d.robot+' \u00b7 firmware '+d.version;}).catch(function(){});"
 "function togglePw(){var i=document.getElementById('pass'),e=document.getElementById('eye');"
 "var on=i.type==='password';i.type=on?'text':'password';e.textContent=on?'Hide':'Show';"
 "e.setAttribute('aria-label',on?'Hide password':'Show password');i.focus();}"
@@ -471,13 +475,14 @@ static esp_err_t connected_handoff(httpd_req_t *req)
         "a.sec{background:#242424;color:#9ab;font-weight:400;font-size:14px}"
         "code{color:#7ee2a8}</style></head><body>"
         "<h1>Orbie is online</h1>"
-        "<p>Connected to <b>%s</b> at <code>%s</code>.</p>"
+        "<p>Connected to <b>%s</b> at <code>%s</code>.<br>Firmware <b>%s</b></p>"
         "<a href='http://%s/'>Open the controls</a>"
         "<p>If the camera does not load here, open <code>%s</code> in Safari or "
         "Chrome &mdash; this sign-in window is a limited browser.</p>"
         "<a class='sec' href='/portal?setup=1'>Change Wi-Fi network</a>"
         "</body></html>",
-        s_ssid, s_ip, s_ip[0] ? s_ip : PORTAL_IP, s_ip[0] ? s_ip : PORTAL_IP);
+        s_ssid, s_ip, esp_app_get_description()->version,
+        s_ip[0] ? s_ip : PORTAL_IP, s_ip[0] ? s_ip : PORTAL_IP);
 
     httpd_resp_set_type(req, "text/html");
     return httpd_resp_send(req, page, HTTPD_RESP_USE_STRLEN);

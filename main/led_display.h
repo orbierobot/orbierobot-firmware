@@ -105,6 +105,17 @@ void display_play_center_to_bliss(void);
  */
 void display_solid(uint8_t r, uint8_t g, uint8_t b);
 
+/**
+ * @brief Show up to 4 characters across the face, in a 3x5 pixel font.
+ *
+ * Used at boot to display the firmware version. On a 16x8 face that is four
+ * glyphs of 3 pixels plus spacing - enough for "1.04" or "v1.0", and the only
+ * way to confirm an OTA landed without plugging in a cable.
+ *
+ * Supports 0-9 . - v and space. Anything else renders blank.
+ */
+void display_show_text4(const char *text, uint8_t r, uint8_t g, uint8_t b);
+
 /* ========== Demo Expressions ========== */
 /* Each blocks for loops * (frames * frame duration). See demo_expressions.h. */
 
