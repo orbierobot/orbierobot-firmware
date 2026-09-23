@@ -20,6 +20,9 @@
 #include "cJSON.h"
 #include "led_display.h"
 #include "boot_sound.h"
+#include "control_page.h"
+#include "voice_link.h"
+#include <stdarg.h>
 #include "wifi_portal.h"
 #include "driver/i2c_master.h"
 #include "driver/i2s_std.h"
@@ -77,6 +80,35 @@ static char wifi_pass[24] = "orbie-0000-0000";
 /* Shared secret for /ota, derived from the MAC alongside the SSID. See the
  * comment above ota_request_from_ap() for what this does and does not buy. */
 static char ota_token[24] = "";
+
+/* Where push-to-talk lives. Held in NVS rather than compiled in, so moving
+ * from a personal Vercel deployment to apis.orbierobot.com later is a POST,
+ * not a reflash of every robot in the field. */
+#define API_NVS_NS   "orbie"
+#define API_NVS_KEY  "api_base"
+#define API_BASE_DEFAULT "https://orbie-apis.vercel.app"
+static char api_base[96] = API_BASE_DEFAULT;
+
+static void api_base_load(void)
+{
+    nvs_handle_t h;
+    if (nvs_open(API_NVS_NS, NVS_READONLY, &h) != ESP_OK) return;
+    size_t len = sizeof(api_base);
+    char tmp[96];
+    if (nvs_get_str(h, API_NVS_KEY, tmp, &len) == ESP_OK && tmp[0]) {
+        strlcpy(api_base, tmp, sizeof(api_base));
+    }
+    nvs_close(h);
+}
+
+static void api_base_save(const char *url)
+{
+    nvs_handle_t h;
+    if (nvs_open(API_NVS_NS, NVS_READWRITE, &h) != ESP_OK) return;
+    nvs_set_str(h, API_NVS_KEY, url);
+    nvs_commit(h);
+    nvs_close(h);
+}
 
 /* Motor pins (DRV8833) */
 #define MOTOR_A_FWD  1
@@ -228,101 +260,7 @@ static void motor_safety_check(void) {
 static esp_err_t index_handler(httpd_req_t *req)
 {
     httpd_resp_set_type(req, "text/html");
-    httpd_resp_sendstr(req,
-"<!doctype html><html><head>"
-"<meta name='viewport' content='width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no'>"
-"<title>Orbie</title>"
-"<style>"
-"*{margin:0;padding:0;box-sizing:border-box}"
-"body{background:#111;color:#eee;font-family:Arial;text-align:center;touch-action:none;overflow:hidden;height:100dvh}"
-"#stream{width:100%;max-width:720px;display:block;margin:0 auto}"
-"#info{font-size:14px;margin:8px;color:#aaa}"
-"#ctrl{position:fixed;bottom:20px;left:0;right:0;display:flex;justify-content:center;gap:16px;padding:10px;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px)}"
-".joy{width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,0.06);border:2px solid rgba(255,255,255,0.15);position:relative;touch-action:none}"
-".joy .knob{width:32px;height:32px;border-radius:50%;background:#e94560;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;box-shadow:0 0 12px rgba(233,69,96,0.3)}"
-".joy .lbl{position:absolute;bottom:-16px;left:0;width:100%;text-align:center;font-size:8px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:1px}"
-".ab{width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer;color:#fff;user-select:none;text-transform:uppercase;font-weight:600;letter-spacing:1px;transition:all .15s}"
-".ab:active{transform:scale(0.88)}"
-".ab.on{border-color:#e53935;background:rgba(255,20,20,0.15);box-shadow:0 0 12px rgba(255,0,0,0.15)}"
-".row{display:flex;gap:10px;align-items:center}"
-"</style></head><body>"
-"<img id='stream' src='http://192.168.4.1:81/stream'>"
-"<div id='info'>Connecting...</div>"
-"<div style='font-size:12px;margin:2px 0 6px'><a href='/portal' style='color:#7a7a7a;text-decoration:none'>Wi-Fi setup</a>"
-"<span style='color:#444'> | </span><a href='/update' style='color:#7a7a7a;text-decoration:none'>Firmware</a></div>"
-"<div id='ctrl'>"
-"<div class='joy' id='drivejoy'><div class='knob' id='driveknob'></div><div class='lbl'>DRIVE</div></div>"
-"<div class='row'>"
-"<div class='ab' id='btnstop' style='color:#e53935'>STOP</div>"
-"<div class='ab' id='btnbeep'>BEEP</div>"
-"<div class='ab' id='btnlaser'>LASER</div>"
-"</div>"
-"<div class='joy' id='turnjoy'><div class='knob' id='turnknob'></div><div class='lbl'>TURN</div></div>"
-"</div>"
-"<script>"
-"(function(){"
-"var info=document.getElementById('info');"
-"var dk=document.getElementById('driveknob');"
-"var tk=document.getElementById('turnknob');"
-
-"function setupV(el,knob,cb){"
-"var sy=0;"
-"function mv(e){"
-"var y=e.touches?e.touches[0].clientY:e.clientY;"
-"var dy=y-sy;var v=-dy/30;if(v>1)v=1;if(v<-1)v=-1;"
-"knob.style.top=(50+dy)+'px';cb(v);"
-"}"
-"function up(){knob.style.top='50%';knob.style.left='50%';cb(0);}"
-"el.addEventListener('touchstart',function(e){sy=e.touches[0].clientY;mv(e);},{passive:true});"
-"el.addEventListener('touchmove',mv,{passive:true});"
-"el.addEventListener('touchend',up,{passive:true});"
-"el.addEventListener('mousedown',function(e){sy=e.clientY;mv(e);});"
-"document.addEventListener('mousemove',function(e){if(sy)mv(e);});"
-"document.addEventListener('mouseup',function(){if(sy){sy=0;up();}});"
-"}"
-
-"function setupH(el,knob,cb){"
-"var sx=0;"
-"function mv(e){"
-"var x=e.touches?e.touches[0].clientX:e.clientX;"
-"var dx=x-sx;var v=dx/30;if(v>1)v=1;if(v<-1)v=-1;"
-"knob.style.left=(50+dx)+'%';knob.style.top='50%';cb(v);"
-"}"
-"function up(){knob.style.top='50%';knob.style.left='50%';cb(0);}"
-"el.addEventListener('touchstart',function(e){sx=e.touches[0].clientX;mv(e);},{passive:true});"
-"el.addEventListener('touchmove',mv,{passive:true});"
-"el.addEventListener('touchend',up,{passive:true});"
-"el.addEventListener('mousedown',function(e){sx=e.clientX;mv(e);});"
-"document.addEventListener('mousemove',function(e){if(sx)mv(e);});"
-"document.addEventListener('mouseup',function(){if(sx){sx=0;up();}});"
-"}"
-
-"function go(d,t){fetch('/motor?drive='+Math.round(d*255)+'&turn='+Math.round(t*255)).catch(function(){});}"
-
-"var dv=0,tv=0;"
-"setupV(document.getElementById('drivejoy'),dk,function(v){dv=v;go(dv,tv);});"
-"setupH(document.getElementById('turnjoy'),tk,function(v){tv=v;go(dv,tv);});"
-
-"document.getElementById('btnstop').onclick=function(){go(0,0);dv=0;tv=0;dk.style.top='50%';dk.style.left='50%';tk.style.top='50%';tk.style.left='50%';};"
-"document.getElementById('btnbeep').onclick=function(){fetch('/beep').catch(function(){});};"
-"document.getElementById('btnlaser').onclick=function(){"
-"var b=this;"
-"fetch('/laser').then(function(r){return r.text();}).then(function(t){"
-"if(t==='LASER_ON'){b.className='ab on';}else{b.className='ab';}"
-"}).catch(function(){});"
-"};"
-
-"setInterval(function(){"
-"fetch('/status').then(function(r){return r.json();}).then(function(d){"
-"info.innerHTML='Dist: '+d.distance+'mm | Amb: '+d.temp_ambient.toFixed(1)+'C Obj: '+d.temp_object.toFixed(1)+'C | Laser: '+(d.laser?'ON':'OFF')+' | D:'+d.drive+' T:'+d.turn;"
-"var lb=document.getElementById('btnlaser');"
-"if(d.laser){lb.className='ab on';}else{lb.className='ab';}"
-"}).catch(function(){});"
-"},500);"
-"})();"
-"</script></body></html>"
-    );
-    return ESP_OK;
+    return httpd_resp_send(req, CONTROL_PAGE_HTML, HTTPD_RESP_USE_STRLEN);
 }
 
 static esp_err_t update_page_handler(httpd_req_t *req)
@@ -477,6 +415,37 @@ static void init_laser() {
 static i2s_chan_handle_t speaker_handle = NULL;
 static bool speaker_ok = false;
 
+/* The MAX98357 amplifies whatever is on its input, and an I2S channel that is
+ * enabled but idle still clocks near-silence at it - which the amp faithfully
+ * turns into a constant hiss. So the channel is only enabled while something
+ * is actually playing, and disabled the moment it stops.
+ *
+ * The mutex matters because the boot greeting, a beep and a /say can all
+ * arrive at once: without it, one could disable the channel while another is
+ * mid-write, which surfaces as a truncated clip or an I2S error. */
+static SemaphoreHandle_t audio_mux = NULL;
+
+static bool speaker_begin(void)
+{
+    if (!speaker_ok || !speaker_handle || !audio_mux) return false;
+    if (xSemaphoreTake(audio_mux, pdMS_TO_TICKS(3000)) != pdTRUE) {
+        ESP_LOGW(TAG, "audio busy - skipping playback");
+        return false;
+    }
+    if (i2s_channel_enable(speaker_handle) != ESP_OK) {
+        xSemaphoreGive(audio_mux);
+        return false;
+    }
+    return true;
+}
+
+static void speaker_end(void)
+{
+    if (!speaker_handle || !audio_mux) return;
+    i2s_channel_disable(speaker_handle);   /* stops the clocks: silence, not hiss */
+    xSemaphoreGive(audio_mux);
+}
+
 static void init_speaker(void)
 {
     i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_AUTO, I2S_ROLE_MASTER);
@@ -495,23 +464,81 @@ static void init_speaker(void)
             .din = I2S_GPIO_UNUSED,
         },
     };
-    if (i2s_channel_init_std_mode(speaker_handle, &std_cfg) != ESP_OK ||
-        i2s_channel_enable(speaker_handle) != ESP_OK) {
+    if (i2s_channel_init_std_mode(speaker_handle, &std_cfg) != ESP_OK) {
         ESP_LOGW(TAG, "Speaker I2S init failed");
         i2s_del_channel(speaker_handle);
         speaker_handle = NULL;
         return;
     }
-    speaker_ok = true;
-    ESP_LOGI(TAG, "Speaker initialized (GPIO44/7/8, %dHz)", BOOT_PCM_SAMPLE_RATE);
+    audio_mux = xSemaphoreCreateMutex();
+    speaker_ok = (audio_mux != NULL);
+    /* Left DISABLED on purpose - see speaker_begin(). */
+    ESP_LOGI(TAG, "Speaker initialized (GPIO44/7/8, %dHz, idle-silent)",
+             BOOT_PCM_SAMPLE_RATE);
+}
+
+/* Playback volume, 0-100. The MAX98357 has no gain control we can reach, so
+ * this scales the samples before they leave the MCU. The greeting is mastered
+ * to -1 dBFS so it carries at a demo, which is far too much for a desk.
+ *
+ * Persisted to NVS: the boot greeting plays before any HTTP request can arrive,
+ * so a runtime-only setting would mean reflashing to change how loud the robot
+ * greets you. Set it once with the slider and it sticks. */
+#define VOLUME_NVS_NS  "orbie"
+#define VOLUME_NVS_KEY "volume"
+static volatile int volume_pct = 8;
+
+static void volume_load(void)
+{
+    nvs_handle_t h;
+    if (nvs_open(VOLUME_NVS_NS, NVS_READONLY, &h) != ESP_OK) return;
+    int32_t v = 0;
+    if (nvs_get_i32(h, VOLUME_NVS_KEY, &v) == ESP_OK && v >= 0 && v <= 100) {
+        volume_pct = (int)v;
+    }
+    nvs_close(h);
+}
+
+static void volume_save(int pct)
+{
+    nvs_handle_t h;
+    if (nvs_open(VOLUME_NVS_NS, NVS_READWRITE, &h) != ESP_OK) return;
+    nvs_set_i32(h, VOLUME_NVS_KEY, (int32_t)pct);
+    nvs_commit(h);
+    nvs_close(h);
+}
+
+/* Scale into a small stack buffer rather than one allocation the size of the
+ * clip: the greeting alone is 247KB, and there is no reason to hold a second
+ * copy of it in RAM. */
+static size_t i2s_write_scaled(const int16_t *src, size_t samples)
+{
+    const size_t CHUNK = 512;
+    int16_t buf[CHUNK];
+    size_t written = 0, total = 0;
+
+    for (size_t off = 0; off < samples; off += CHUNK) {
+        size_t n = (samples - off) < CHUNK ? (samples - off) : CHUNK;
+        int vol = volume_pct;              /* sample once per chunk */
+        for (size_t i = 0; i < n; i++) {
+            buf[i] = (int16_t)(((int32_t)src[off + i] * vol) / 100);
+        }
+        if (i2s_channel_write(speaker_handle, buf, n * sizeof(int16_t), &written,
+                              portMAX_DELAY) != ESP_OK) {
+            break;
+        }
+        total += written;
+    }
+    return total;
 }
 
 static void play_boot_sound(void)
 {
-    if (!speaker_ok || !speaker_handle) return;
-    size_t written = 0;
-    i2s_channel_write(speaker_handle, boot_pcm_data, BOOT_PCM_NUM_BYTES, &written, portMAX_DELAY);
-    ESP_LOGI(TAG, "Boot sound played (%u bytes)", (unsigned)written);
+    if (!speaker_begin()) return;
+    size_t wrote = i2s_write_scaled((const int16_t *)boot_pcm_data, BOOT_PCM_NUM_SAMPLES);
+    speaker_end();
+    ESP_LOGI(TAG, "Boot sound played (%u of %u bytes at %d%% volume)",
+             (unsigned)wrote, (unsigned)BOOT_PCM_NUM_BYTES, volume_pct);
 }
 
 static void init_i2c_bus(void)
@@ -610,6 +637,45 @@ static void read_temp_sensor(void)
     }
 }
 
+/* Head-tilt servo travel. See head_handler() for why these are conservative. */
+#define HEAD_US_MIN    1700
+#define HEAD_US_MAX    2500
+#define HEAD_US_CENTER 2425
+
+/* The head servo is DISABLED by default.
+ *
+ * Left holding a position it cannot reach, a hobby servo buzzes continuously,
+ * draws heavy stall current and will eventually strip its gears or brown out
+ * the board. Orbie was doing exactly that - an audible hiss with the head at
+ * its boot position - so nothing drives the pin unless it is switched on.
+ *
+ * Disabled means no pulses at all, which lets the servo go limp rather than
+ * fighting; a servo given no signal holds nothing and draws nothing.
+ * Re-enable at runtime with /head?enable=1 once the mechanism is trusted. */
+static volatile bool head_enabled = false;
+static volatile int  head_us = HEAD_US_CENTER;
+
+static void head_disable(void)
+{
+    /* Stop the PWM and park the pin low: no pulse train, no holding torque. */
+    ledc_stop(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_5, 0);
+    head_enabled = false;
+    ESP_LOGI(TAG, "Head servo DISABLED (no drive signal)");
+}
+
+static void head_set_us(int us)
+{
+    if (us < HEAD_US_MIN) us = HEAD_US_MIN;
+    if (us > HEAD_US_MAX) us = HEAD_US_MAX;
+    head_us = us;
+    if (!head_enabled) return;   /* remember the target, drive nothing */
+    /* 50Hz = 20000us period, 14-bit = 16384 steps. 2425us -> 1987, matching
+     * the constant the original firmware hard-coded. */
+    uint32_t duty = (uint32_t)(((int64_t)us * 16384) / 20000);
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_5, duty);
+    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_5);
+}
+
 /* Center the head-tilt servo (GPIO43) to stop it from jittering */
 static void init_servo() {
     ledc_timer_config_t timer = {
@@ -630,10 +696,55 @@ static void init_servo() {
         .hpoint = 0,
     };
     ledc_channel_config(&ch);
-    /* Center position: 2425us out of 20000us period * 16384 = 1987 */
-    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_5, 1987);
-    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_5);
-    ESP_LOGI(TAG, "Servo centered on GPIO43");
+    /* Configured but not driven. See head_disable() above. */
+    head_disable();
+}
+
+/* Head tilt, GPIO43 / LEDC channel 5, 50Hz with 14-bit resolution.
+ *
+ * 2425us is the only position this hardware is known to tolerate - it is what
+ * the original firmware parks at on boot. That sits close to the usual 2500us
+ * upper limit for a hobby servo, which suggests nearly all the travel runs
+ * downward from there, so the window below is deliberately cautious: it is a
+ * guess at the mechanical limits, not a measurement. Widen HEAD_US_MIN only
+ * after watching the head actually reach it - a servo driven past its stop
+ * stalls, draws heavily and will strip its gears or brown out the board. */
+static esp_err_t head_handler(httpd_req_t *req)
+{
+    char query[64], val[16];
+    int us = head_us;
+
+    if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK) {
+        if (httpd_query_key_value(query, "enable", val, sizeof(val)) == ESP_OK) {
+            if (atoi(val)) {
+                head_enabled = true;
+                ESP_LOGW(TAG, "Head servo ENABLED - watch for buzzing at the limits");
+                head_set_us(head_us);
+            } else {
+                head_disable();
+            }
+        }
+        if (httpd_query_key_value(query, "us", val, sizeof(val)) == ESP_OK) {
+            us = atoi(val);
+        } else if (httpd_query_key_value(query, "pos", val, sizeof(val)) == ESP_OK) {
+            int pos = atoi(val);
+            if (pos < 0)   pos = 0;
+            if (pos > 100) pos = 100;
+            us = HEAD_US_MIN + (HEAD_US_MAX - HEAD_US_MIN) * pos / 100;
+        }
+    }
+    head_set_us(us);   /* clamps */
+    ESP_LOGI(TAG, "/head -> %dus (duty %u, range %d-%d)", head_us,
+             (unsigned)(((int64_t)head_us * 16384) / 20000), HEAD_US_MIN, HEAD_US_MAX);
+
+    char out[96];
+    snprintf(out, sizeof(out), "{\"us\":%d,\"pos\":%d,\"min\":%d,\"max\":%d,\"enabled\":%s}",
+             head_us,
+             (head_us - HEAD_US_MIN) * 100 / (HEAD_US_MAX - HEAD_US_MIN),
+             HEAD_US_MIN, HEAD_US_MAX, head_enabled ? "true" : "false");
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_sendstr(req, out);
+    return ESP_OK;
 }
 
 static esp_err_t motor_handler(httpd_req_t *req)
@@ -669,9 +780,302 @@ static esp_err_t laser_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
+/* Two short rising chirps, synthesised on the fly rather than stored: a beep
+ * is ~0.1s of a sine wave, and a table for it would cost flash for nothing.
+ * Shaped with a raised-cosine envelope because a square-edged tone makes the
+ * little speaker click audibly at both ends. */
+static void play_beep(void)
+{
+    if (!speaker_begin()) return;
+    const int   sr        = BOOT_PCM_SAMPLE_RATE;   /* 16000 */
+    const int   tone_ms   = 90;
+    const int   gap_ms    = 60;
+    const float freqs[2]  = { 880.0f, 1320.0f };    /* A5 then E6 */
+    const int   n         = (sr * tone_ms) / 1000;
+    const int   gap_n     = (sr * gap_ms) / 1000;
+    const float amplitude = 9000.0f * (volume_pct / 100.0f);  /* short of clipping */
+
+    int16_t *buf = (int16_t *)malloc(n * sizeof(int16_t));
+    if (!buf) { speaker_end(); return; }
+
+    size_t written = 0, pushed = 0;
+    for (int t = 0; t < 2; t++) {
+        for (int i = 0; i < n; i++) {
+            float env = 0.5f * (1.0f - cosf(2.0f * (float)M_PI * i / (n - 1)));
+            buf[i] = (int16_t)(amplitude * env *
+                               sinf(2.0f * (float)M_PI * freqs[t] * i / sr));
+        }
+        esp_err_t werr = i2s_channel_write(speaker_handle, buf, n * sizeof(int16_t),
+                                           &written, pdMS_TO_TICKS(500));
+        pushed += written;
+        if (werr != ESP_OK) {
+            ESP_LOGW(TAG, "beep: i2s write failed: %s", esp_err_to_name(werr));
+        }
+        if (t == 0) {
+            memset(buf, 0, (gap_n < n ? gap_n : n) * sizeof(int16_t));
+            i2s_channel_write(speaker_handle, buf,
+                              (gap_n < n ? gap_n : n) * sizeof(int16_t),
+                              &written, pdMS_TO_TICKS(200));
+        }
+    }
+    free(buf);
+    speaker_end();
+    /* If this reports the expected byte count and nothing is audible, the
+     * fault is downstream of the MCU - amplifier, its enable pin, or the
+     * speaker itself - not in this code. */
+    ESP_LOGI(TAG, "beep: %u bytes reached I2S", (unsigned)pushed);
+}
+
+/* Single JPEG frame, for handing the scene to a vision model. The MJPEG
+ * stream on :81 is a multipart response and awkward to grab one frame from. */
+static esp_err_t capture_handler(httpd_req_t *req)
+{
+    camera_fb_t *fb = esp_camera_fb_get();
+    if (!fb) {
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Camera capture failed");
+        return ESP_FAIL;
+    }
+    httpd_resp_set_type(req, "image/jpeg");
+    httpd_resp_set_hdr(req, "Content-Disposition", "inline; filename=orbie.jpg");
+    esp_err_t r = httpd_resp_send(req, (const char *)fb->buf, fb->len);
+    esp_camera_fb_return(fb);
+    return r;
+}
+
+/* POST raw PCM - 16kHz, 16-bit, mono, same format as the boot greeting - and
+ * it plays on the speaker. Deliberately dumb: the MCU cannot decode mp3 or
+ * opus, so whatever produces Orbie's voice converts to PCM first and the robot
+ * just streams bytes to I2S. Chunked rather than buffered whole, so a long
+ * answer does not need to fit in RAM. */
+#define SAY_MAX_BYTES (30 * 16000 * 2)   /* 30s ceiling */
+
+static esp_err_t say_handler(httpd_req_t *req)
+{
+    if (!speaker_begin()) {
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Speaker unavailable or busy");
+        return ESP_FAIL;
+    }
+    if (req->content_len <= 0 || req->content_len > SAY_MAX_BYTES) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Bad length (max 30s of 16k mono PCM)");
+        return ESP_FAIL;
+    }
+
+    const int CHUNK = 2048;
+    uint8_t *buf = (uint8_t *)malloc(CHUNK);
+    if (!buf) {
+        speaker_end();
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Out of memory");
+        return ESP_FAIL;
+    }
+
+    int remaining = req->content_len;
+    size_t written = 0, total = 0;
+    while (remaining > 0) {
+        int want = remaining < CHUNK ? remaining : CHUNK;
+        int got  = httpd_req_recv(req, (char *)buf, want);
+        if (got <= 0) {
+            free(buf);
+            speaker_end();
+            ESP_LOGW(TAG, "/say upload aborted after %u bytes", (unsigned)total);
+            return ESP_FAIL;   /* socket is already gone; no response to send */
+        }
+        /* got is a byte count; the payload is 16-bit samples. An odd tail
+         * would split a sample, so scale only whole ones. */
+        int16_t *s16 = (int16_t *)buf;
+        int vol = volume_pct;
+        for (int i = 0; i < got / 2; i++) {
+            s16[i] = (int16_t)(((int32_t)s16[i] * vol) / 100);
+        }
+        i2s_channel_write(speaker_handle, buf, got, &written, pdMS_TO_TICKS(2000));
+        remaining -= got;
+        total     += got;
+    }
+    free(buf);
+    speaker_end();
+    ESP_LOGI(TAG, "/say played %u bytes (%.1fs)", (unsigned)total,
+             total / (float)(BOOT_PCM_SAMPLE_RATE * 2));
+    httpd_resp_sendstr(req, "OK");
+    return ESP_OK;
+}
+
+/* ==================== Push-to-talk glue ====================
+ *
+ * voice_link owns the network side; these adapt it to hardware that already
+ * exists. Playback reuses the same volume-scaled I2S path as the greeting, so
+ * an answer obeys the volume slider like everything else. */
+
+static void ptt_play_pcm(const uint8_t *pcm, size_t len, bool first)
+{
+    /* The channel is enabled on the first chunk and left open for the rest of
+     * the clip: toggling it per chunk would click between every 1KB. */
+    if (first && !speaker_begin()) return;
+    if (!speaker_ok) return;
+    i2s_write_scaled((const int16_t *)pcm, len / 2);
+}
+
+static void ptt_play_done(void)
+{
+    speaker_end();
+}
+
+static camera_fb_t *ptt_fb = NULL;
+
+static const uint8_t *ptt_grab_frame(size_t *len_out)
+{
+    ptt_fb = esp_camera_fb_get();
+    if (!ptt_fb) { *len_out = 0; return NULL; }
+    *len_out = ptt_fb->len;
+    return ptt_fb->buf;
+}
+
+static void ptt_release_frame(void)
+{
+    if (ptt_fb) { esp_camera_fb_return(ptt_fb); ptt_fb = NULL; }
+}
+
+/* ==================== Self-test endpoints ====================
+ *
+ * Each runs in its own task and returns immediately. Doing them inline would
+ * block the HTTP worker for seconds - the eye reel alone is ~7s - and the
+ * browser would sit on a spinner or time out mid-test.
+ *
+ * They exist so the panel can exercise every subsystem without a second
+ * device: on a robot with no speaker, or no distance sensor, you want to find
+ * out by pressing a button, not by inferring it from a demo that fell flat. */
+
+static void test_voice_task(void *pv)
+{
+    /* The first ~2.5s of the greeting, at whatever volume is set. Using the
+     * real greeting rather than a tone is the point: this answers "how loud
+     * will it be when it introduces itself", which a beep does not. */
+    if (speaker_begin()) {
+        size_t samples = BOOT_PCM_SAMPLE_RATE * 5 / 2;
+        if (samples > BOOT_PCM_NUM_SAMPLES) samples = BOOT_PCM_NUM_SAMPLES;
+        i2s_write_scaled((const int16_t *)boot_pcm_data, samples);
+        speaker_end();
+        ESP_LOGI(TAG, "voice test played at %d%%", volume_pct);
+    }
+    vTaskDelete(NULL);
+}
+
+static void test_eyes_task(void *pv)
+{
+    display_play_demo_sequence();
+    vTaskDelete(NULL);
+}
+
+static void test_head_task(void *pv)
+{
+    /* Sweep the full allowed travel and come back to centre, slowly enough to
+     * watch. If the head does not move, the servo or its wiring is the fault -
+     * the log will still show the pulse widths going out. */
+    const int steps = 12;
+    for (int i = 0; i <= steps; i++) {
+        head_set_us(HEAD_US_MIN + (HEAD_US_MAX - HEAD_US_MIN) * i / steps);
+        vTaskDelay(pdMS_TO_TICKS(120));
+    }
+    for (int i = steps; i >= 0; i--) {
+        head_set_us(HEAD_US_MIN + (HEAD_US_MAX - HEAD_US_MIN) * i / steps);
+        vTaskDelay(pdMS_TO_TICKS(120));
+    }
+    head_set_us(HEAD_US_CENTER);
+    ESP_LOGI(TAG, "head sweep complete, back to %dus", HEAD_US_CENTER);
+    vTaskDelete(NULL);
+}
+
+static void test_motors_task(void *pv)
+{
+    /* Short, gentle nudges. Long enough to see and hear, short enough not to
+     * drive the robot off the desk. */
+    motor_target_drive = 90;  motor_target_turn = 0;
+    last_motor_cmd_us = esp_timer_get_time();
+    vTaskDelay(pdMS_TO_TICKS(450));
+    motor_target_drive = -90;
+    last_motor_cmd_us = esp_timer_get_time();
+    vTaskDelay(pdMS_TO_TICKS(450));
+    motors_stop();
+    ESP_LOGI(TAG, "motor test complete");
+    vTaskDelete(NULL);
+}
+
+static esp_err_t test_handler(httpd_req_t *req)
+{
+    char query[48], what[16] = {0};
+    if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK) {
+        httpd_query_key_value(query, "run", what, sizeof(what));
+    }
+
+    const char *msg = "unknown test";
+    if (!strcmp(what, "voice")) {
+        if (!speaker_ok) { msg = "speaker not initialised"; }
+        else { xTaskCreate(test_voice_task, "t_voice", 4096, NULL, 4, NULL);
+               msg = "playing 2.5s of the greeting"; }
+    } else if (!strcmp(what, "eyes")) {
+        xTaskCreate(test_eyes_task, "t_eyes", 4096, NULL, 4, NULL);
+        msg = "heart, star, loader, rainbow";
+    } else if (!strcmp(what, "head")) {
+        if (!head_enabled) {
+            msg = "head is disabled - enable it first (/head?enable=1)";
+        } else {
+            xTaskCreate(test_head_task, "t_head", 3072, NULL, 4, NULL);
+            msg = "sweeping the head";
+        }
+    } else if (!strcmp(what, "motors")) {
+        xTaskCreate(test_motors_task, "t_motor", 3072, NULL, 4, NULL);
+        msg = "forward then back";
+    } else if (!strcmp(what, "beep")) {
+        play_beep();
+        msg = speaker_ok ? "beeped" : "speaker not initialised";
+    }
+
+    char out[96];
+    snprintf(out, sizeof(out), "{\"ok\":true,\"msg\":\"%s\"}", msg);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_sendstr(req, out);
+    return ESP_OK;
+}
+
+static esp_err_t whoami_handler(httpd_req_t *req)
+{
+    char query[160], val[96];
+    if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK &&
+        httpd_query_key_value(query, "api", val, sizeof(val)) == ESP_OK && val[0]) {
+        strlcpy(api_base, val, sizeof(api_base));
+        api_base_save(api_base);
+        ESP_LOGI(TAG, "API base set to %s", api_base);
+    }
+
+    char out[240];
+    snprintf(out, sizeof(out), "{\"robot\":\"%s\",\"ip\":\"%s\",\"api\":\"%s\"}",
+             wifi_ssid, wifi_portal_ip(), api_base);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_sendstr(req, out);
+    return ESP_OK;
+}
+
+static esp_err_t volume_handler(httpd_req_t *req)
+{
+    char query[48], val[12];
+    if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK &&
+        httpd_query_key_value(query, "pct", val, sizeof(val)) == ESP_OK) {
+        int v = atoi(val);
+        if (v < 0)   v = 0;
+        if (v > 100) v = 100;
+        volume_pct = v;
+        volume_save(v);
+        ESP_LOGI(TAG, "volume -> %d%% (saved)", volume_pct);
+    }
+    char out[32];
+    snprintf(out, sizeof(out), "{\"pct\":%d}", volume_pct);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_sendstr(req, out);
+    return ESP_OK;
+}
+
 static esp_err_t beep_handler(httpd_req_t *req)
 {
-    httpd_resp_sendstr(req, "BEEP");
+    play_beep();
+    httpd_resp_sendstr(req, speaker_ok ? "BEEP" : "BEEP (speaker unavailable)");
     return ESP_OK;
 }
 
@@ -684,6 +1088,8 @@ static esp_err_t status_handler(httpd_req_t *req)
         cJSON_AddNumberToObject(root, "turn", motor_target_turn);
         cJSON_AddNumberToObject(root, "temp_ambient", temp_ambient);
         cJSON_AddNumberToObject(root, "temp_object", temp_object);
+        cJSON_AddStringToObject(root, "wifi_ssid", wifi_portal_ssid());
+        cJSON_AddStringToObject(root, "wifi_ip", wifi_portal_ip());
     const char *json = cJSON_PrintUnformatted(root);
     httpd_resp_set_type(req, "application/json");
     esp_err_t res = httpd_resp_sendstr(req, json);
@@ -805,6 +1211,20 @@ static void start_camera(void)
     };
     if (esp_psram_get_size() > 0) { config.frame_size = FRAMESIZE_VGA; }
     ESP_ERROR_CHECK(esp_camera_init(&config));
+
+    /* The OV3660 is mounted upside down in the shell, so the sensor is rotated
+     * 180 degrees relative to the world. Flipping both axes in the sensor is
+     * free - it changes the readout order, costing no CPU and no latency,
+     * unlike rotating frames in software or with a CSS transform in the UI. */
+    sensor_t *cam = esp_camera_sensor_get();
+    if (cam) {
+        cam->set_vflip(cam, 1);
+        cam->set_hmirror(cam, 1);
+        ESP_LOGI(TAG, "Camera orientation: rotated 180 (vflip + hmirror)");
+    } else {
+        ESP_LOGW(TAG, "Camera sensor handle unavailable - image will be upside down");
+    }
+
     ESP_LOGI(TAG, "Camera ready");
 }
 
@@ -862,7 +1282,10 @@ static void start_webserver(void)
 {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.server_port = 80;
-    config.max_uri_handlers = 24;
+    /* 16 control routes + 11 portal routes. Running out silently cost an
+     * evening: registration failed part-way and took the portal's 404
+     * catch-all with it, so the captive page stopped appearing. */
+    config.max_uri_handlers = 40;
     httpd_handle_t ctrl = NULL;
     ESP_ERROR_CHECK(httpd_start(&ctrl, &config));
     httpd_uri_t uris[] = {
@@ -871,6 +1294,12 @@ static void start_webserver(void)
             { .uri = "/ota",    .method = HTTP_POST, .handler = ota_handler },
             { .uri = "/motor",  .method = HTTP_GET,  .handler = motor_handler },
             { .uri = "/beep",   .method = HTTP_GET,  .handler = beep_handler },
+            { .uri = "/volume", .method = HTTP_GET,  .handler = volume_handler },
+            { .uri = "/test",   .method = HTTP_GET,  .handler = test_handler },
+            { .uri = "/api/whoami", .method = HTTP_GET, .handler = whoami_handler },
+            { .uri = "/capture", .method = HTTP_GET,  .handler = capture_handler },
+            { .uri = "/say",    .method = HTTP_POST, .handler = say_handler },
+            { .uri = "/head",   .method = HTTP_GET,  .handler = head_handler },
             { .uri = "/laser",  .method = HTTP_GET,  .handler = laser_handler },
             { .uri = "/status", .method = HTTP_GET,  .handler = status_handler },
             { .uri = "/api/pose", .method = HTTP_GET, .handler = pose_handler },
@@ -898,9 +1327,24 @@ static void start_webserver(void)
 }
 
 static void motor_monitor_task(void *pv) {
+    int ticks = 0;
     while (true) {
         motor_safety_check();
         read_temp_sensor();
+
+        /* Sensor telemetry every 2s. Both sensors answer at init - the open
+         * question is whether the periodic reads keep working, and a value
+         * that never changes looks identical to a dead sensor from the UI. */
+        if (++ticks >= 10) {
+            ticks = 0;
+            /* Integer tenths rather than %f: float formatting is what
+             * overflowed this task's stack in the first place. */
+            ESP_LOGI(TAG, "sensors: distance=%umm  ambient=%d.%dC  object=%d.%dC  temp_ok=%d",
+                     (unsigned)g_distance_mm,
+                     (int)temp_ambient, ((int)(temp_ambient * 10)) % 10,
+                     (int)temp_object,  ((int)(temp_object  * 10)) % 10,
+                     (int)temp_ok);
+        }
         vTaskDelay(pdMS_TO_TICKS(200));
     }
 }
@@ -911,13 +1355,34 @@ static void vl53_task(void *pv)
     /* Use the shared I2C bus instead of creating a new one */
     vl->setBusHandle(i2c_bus);
     vl->addDevice(400000);
+    /* Keep trying instead of giving up. The five original attempts all fall
+     * inside the window where the boot animation is still driving the LED
+     * matrix on the same I2C bus, so a busy bus used to look like a dead
+     * sensor - and the giving-up path then crashed the whole robot.
+     *
+     * `delete vl` was that crash: the VL53L0X destructor touches a device
+     * handle that a failed init never set up, which panicked, rebooted, and
+     * looped roughly every 25 seconds on both units. The object is
+     * deliberately not deleted here; this task owns it for the life of the
+     * robot, so leaking it on a path that never returns costs nothing. */
     bool inited = false;
-    for (int retry = 0; retry < 5; retry++) {
-        vTaskDelay(pdMS_TO_TICKS(100 * (retry + 1)));
-        if (vl->init()) { inited = true; break; }
-        ESP_LOGW(TAG, "VL53L0X init attempt %d/5 failed", retry + 1);
+    int round = 0;
+    while (!inited) {
+        for (int retry = 0; retry < 5 && !inited; retry++) {
+            vTaskDelay(pdMS_TO_TICKS(100 * (retry + 1)));
+            if (vl->init()) {
+                inited = true;
+            } else {
+                ESP_LOGW(TAG, "VL53L0X init attempt %d/5 failed", retry + 1);
+            }
+        }
+        if (!inited) {
+            round++;
+            ESP_LOGE(TAG, "VL53L0X init failed (round %d) - retrying in 5s", round);
+            vTaskDelay(pdMS_TO_TICKS(5000));
+        }
     }
-    if (!inited) { ESP_LOGE(TAG, "VL53L0X init failed"); delete vl; vTaskDelete(NULL); return; }
+    ESP_LOGI(TAG, "VL53L0X ready");
     while (true) {
         uint16_t distance = 0;
         if (vl->read(&distance)) {
@@ -995,6 +1460,9 @@ extern "C" void app_main(void)
 
     /* Initialize speaker */
     init_speaker();
+    volume_load();   /* before the greeting, which is the loudest thing we play */
+    api_base_load();
+    ESP_LOGI(TAG, "Volume: %d%%", volume_pct);
     BOOT_BEACON(60, 25, 0);         /* ORANGE: I2S speaker initialised */
 
     /* Boot animation: LED face + voice greeting playing in parallel */
@@ -1015,7 +1483,25 @@ extern "C" void app_main(void)
     BOOT_BEACON(60, 0, 60);         /* MAGENTA: web server up - boot complete */
     display_look_direction(EYE_CENTER);
 
-    xTaskCreate(motor_monitor_task, "motor_mon", 1536, NULL, 1, NULL);
+    /* 1536 was too tight to log from: %f formatting alone costs over a
+     * kilobyte of stack, which overflowed this task and panicked the robot. */
+    /* Push-to-talk needs internet, which only exists after the portal has
+     * joined a real network - so this is started by the Wi-Fi state, not here.
+     * See ptt_watch_task. */
+    xTaskCreate([](void *) {
+        bool started = false;
+        while (true) {
+            if (!started && wifi_portal_state() == ORBIE_WIFI_CONNECTED) {
+                voice_link_start(api_base, wifi_ssid, "",
+                                 ptt_play_pcm, ptt_grab_frame, ptt_release_frame);
+                started = true;
+                ESP_LOGI(TAG, "push-to-talk link started against %s", api_base);
+            }
+            vTaskDelay(pdMS_TO_TICKS(3000));
+        }
+    }, "ptt_watch", 3072, NULL, 2, NULL);
+
+    xTaskCreate(motor_monitor_task, "motor_mon", 4096, NULL, 1, NULL);
         xTaskCreate(vl53_task, "vl53", 8192, NULL, 5, NULL);
         xTaskCreate(odometry_task, "odom", 3072, NULL, 3, NULL);
     }
