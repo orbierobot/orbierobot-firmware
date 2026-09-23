@@ -19,16 +19,33 @@
 static const char *TAG = "wifi_portal";
 
 #define NVS_NS        "orbie"
-#define NVS_KEY_SSID  "sta_ssid"
-#define NVS_KEY_PASS  "sta_pass"
 #define PORTAL_IP     "192.168.4.1"
-#define MAX_RETRIES   5
+
+/* Up to five remembered networks, most-recently-used first. Five because a
+ * robot realistically moves between a desk, a home, an office and a venue -
+ * and because each attempt costs real seconds at boot, so a longer list would
+ * just delay the portal for someone who has moved somewhere new entirely. */
+#define MAX_NETWORKS  5
+#define KEY_COUNT     "net_n"
+
+/* Per-network attempts. Deliberately small: with five stored networks, the old
+ * five-retry behaviour would take over a minute to conclude that none of them
+ * are here, and the user is stood there watching a robot do nothing. */
+#define TRY_RETRIES   2
+#define TRY_TIMEOUT_MS 20000
 
 static orbie_wifi_state_t s_state = ORBIE_WIFI_IDLE;
 static char s_ssid[33] = "";
 static char s_ip[16]  = "";
 static int  s_retries = 0;
 static int  s_reason  = 0;   /* last wifi_err_reason_t from a disconnect */
+static int  s_max_retries = 5;
+static bool s_trying_stored = false;   /* boot-time walk through saved networks */
+
+typedef struct {
+    char ssid[33];
+    char pass[65];
+} orbie_net_t;
 
 /* A failed join is almost always one of two things, and the user cannot tell
  * them apart from the outside - especially on a hidden network, where a
@@ -57,26 +74,97 @@ static const char *reason_text(int reason)
 
 /* ===================== credential storage ===================== */
 
-static esp_err_t creds_save(const char *ssid, const char *pass)
+static void key_for(char *out, size_t n, const char *base, int i)
 {
+    snprintf(out, n, "%s%d", base, i);
+}
+
+/* Credentials used to live under a single sta_ssid/sta_pass pair. Carrying
+ * them over matters: without this, upgrading the firmware silently forgets the
+ * network a robot was already on, and the owner is sent back to the portal for
+ * no visible reason. */
+static void nets_migrate_legacy(void)
+{
+    nvs_handle_t h;
+    if (nvs_open(NVS_NS, NVS_READWRITE, &h) != ESP_OK) return;
+
+    int32_t count = 0;
+    if (nvs_get_i32(h, KEY_COUNT, &count) == ESP_OK && count > 0) {
+        nvs_close(h);
+        return;                      /* already on the new layout */
+    }
+
+    char ssid[33] = "", pass[65] = "";
+    size_t sl = sizeof(ssid), pl = sizeof(pass);
+    if (nvs_get_str(h, "sta_ssid", ssid, &sl) == ESP_OK && ssid[0]) {
+        if (nvs_get_str(h, "sta_pass", pass, &pl) != ESP_OK) pass[0] = '\0';
+        nvs_set_str(h, "ssid0", ssid);
+        nvs_set_str(h, "pass0", pass);
+        nvs_set_i32(h, KEY_COUNT, 1);
+        nvs_commit(h);
+        ESP_LOGI(TAG, "migrated stored network \"%s\" to the new format", ssid);
+    }
+    nvs_close(h);
+}
+
+static int nets_load(orbie_net_t *out, int max)
+{
+    nets_migrate_legacy();
+
+    nvs_handle_t h;
+    if (nvs_open(NVS_NS, NVS_READONLY, &h) != ESP_OK) return 0;
+
+    int32_t count = 0;
+    nvs_get_i32(h, KEY_COUNT, &count);
+    if (count < 0) count = 0;
+    if (count > max) count = max;
+
+    int n = 0;
+    for (int i = 0; i < count; i++) {
+        char k[16];
+        size_t len = sizeof(out[n].ssid);
+        key_for(k, sizeof(k), "ssid", i);
+        if (nvs_get_str(h, k, out[n].ssid, &len) != ESP_OK || !out[n].ssid[0]) continue;
+        len = sizeof(out[n].pass);
+        key_for(k, sizeof(k), "pass", i);
+        if (nvs_get_str(h, k, out[n].pass, &len) != ESP_OK) out[n].pass[0] = '\0';
+        n++;
+    }
+    nvs_close(h);
+    return n;
+}
+
+/* Store this network at the front, dropping any older copy of the same SSID.
+ * Most-recently-used ordering means the network you are actually standing in
+ * is tried first next time, which is almost always the right guess. */
+static esp_err_t nets_remember(const char *ssid, const char *pass)
+{
+    orbie_net_t list[MAX_NETWORKS];
+    int n = nets_load(list, MAX_NETWORKS);
+
+    orbie_net_t merged[MAX_NETWORKS];
+    int m = 0;
+    strlcpy(merged[m].ssid, ssid, sizeof(merged[m].ssid));
+    strlcpy(merged[m].pass, pass ? pass : "", sizeof(merged[m].pass));
+    m++;
+    for (int i = 0; i < n && m < MAX_NETWORKS; i++) {
+        if (strcmp(list[i].ssid, ssid) == 0) continue;   /* de-dupe */
+        merged[m++] = list[i];
+    }
+
     nvs_handle_t h;
     esp_err_t err = nvs_open(NVS_NS, NVS_READWRITE, &h);
     if (err != ESP_OK) return err;
-    nvs_set_str(h, NVS_KEY_SSID, ssid);
-    nvs_set_str(h, NVS_KEY_PASS, pass ? pass : "");
+    for (int i = 0; i < m; i++) {
+        char k[16];
+        key_for(k, sizeof(k), "ssid", i); nvs_set_str(h, k, merged[i].ssid);
+        key_for(k, sizeof(k), "pass", i); nvs_set_str(h, k, merged[i].pass);
+    }
+    nvs_set_i32(h, KEY_COUNT, m);
     err = nvs_commit(h);
     nvs_close(h);
+    ESP_LOGI(TAG, "remembered \"%s\" (%d network%s stored)", ssid, m, m == 1 ? "" : "s");
     return err;
-}
-
-static bool creds_load(char *ssid, size_t ssid_len, char *pass, size_t pass_len)
-{
-    nvs_handle_t h;
-    if (nvs_open(NVS_NS, NVS_READONLY, &h) != ESP_OK) return false;
-    bool ok = nvs_get_str(h, NVS_KEY_SSID, ssid, &ssid_len) == ESP_OK && ssid[0];
-    if (ok && nvs_get_str(h, NVS_KEY_PASS, pass, &pass_len) != ESP_OK) pass[0] = '\0';
-    nvs_close(h);
-    return ok;
 }
 
 /* ===================== connection ===================== */
@@ -97,6 +185,7 @@ static void sta_connect(const char *ssid, const char *pass)
     strlcpy(s_ssid, ssid, sizeof(s_ssid));
     s_ip[0]   = '\0';
     s_retries = 0;
+    s_reason  = 0;
     s_state   = ORBIE_WIFI_CONNECTING;
 
     ESP_LOGI(TAG, "connecting to \"%s\"", ssid);
@@ -111,14 +200,18 @@ static void on_wifi_event(void *arg, esp_event_base_t base, int32_t id, void *da
         wifi_event_sta_disconnected_t *d = (wifi_event_sta_disconnected_t *)data;
         if (d) s_reason = d->reason;
 
-        /* Retrying a name that does not exist just burns 5 attempts and makes
-         * the user wait ~15s for a verdict we already have. */
-        bool hopeless = (s_reason == WIFI_REASON_NO_AP_FOUND);
+        /* A name that does not resolve cannot succeed, so a typo should fail
+         * fast rather than making the user wait. But a HIDDEN network reports
+         * exactly the same NO_AP_FOUND on its first attempt - it puts no SSID
+         * in its beacons, so it is only found once a directed probe lands.
+         * Failing fast on a stored network therefore skipped hidden ones
+         * entirely, which is how "Ayodhya" was abandoned in 2.8 seconds. */
+        bool hopeless = (s_reason == WIFI_REASON_NO_AP_FOUND) && !s_trying_stored;
 
-        if (s_state == ORBIE_WIFI_CONNECTING && s_retries < MAX_RETRIES && !hopeless) {
+        if (s_state == ORBIE_WIFI_CONNECTING && s_retries < s_max_retries && !hopeless) {
             s_retries++;
             ESP_LOGW(TAG, "disconnected (reason %d), retry %d/%d",
-                     s_reason, s_retries, MAX_RETRIES);
+                     s_reason, s_retries, s_max_retries);
             esp_wifi_connect();
         } else if (s_state != ORBIE_WIFI_IDLE) {
             s_state = ORBIE_WIFI_FAILED;
@@ -135,20 +228,63 @@ static void on_wifi_event(void *arg, esp_event_base_t base, int32_t id, void *da
     }
 }
 
+/* Walk the remembered networks in order and stop at the first that answers.
+ * Runs in its own task: each attempt can take ten seconds or more, and
+ * app_main must not sit blocked while the face and servers come up. */
+static void sta_try_stored_task(void *pv)
+{
+    orbie_net_t list[MAX_NETWORKS];
+    int n = nets_load(list, MAX_NETWORKS);
+    if (n == 0) {
+        ESP_LOGI(TAG, "no stored networks - portal only");
+        s_state = ORBIE_WIFI_IDLE;
+        vTaskDelete(NULL);
+        return;
+    }
+
+    ESP_LOGI(TAG, "trying %d stored network%s", n, n == 1 ? "" : "s");
+    s_max_retries   = TRY_RETRIES;
+    s_trying_stored = true;
+
+    for (int i = 0; i < n; i++) {
+        ESP_LOGI(TAG, "  [%d/%d] \"%s\"", i + 1, n, list[i].ssid);
+        sta_connect(list[i].ssid, list[i].pass);
+
+        int waited = 0;
+        while (waited < TRY_TIMEOUT_MS) {
+            vTaskDelay(pdMS_TO_TICKS(250));
+            waited += 250;
+            if (s_state == ORBIE_WIFI_CONNECTED || s_state == ORBIE_WIFI_FAILED) break;
+        }
+        if (s_state == ORBIE_WIFI_CONNECTED) {
+            ESP_LOGI(TAG, "joined \"%s\" - skipping the rest", s_ssid);
+            s_max_retries   = 5;        /* be patient again once we are on */
+            s_trying_stored = false;
+            vTaskDelete(NULL);
+            return;
+        }
+        ESP_LOGW(TAG, "  \"%s\" did not answer", list[i].ssid);
+    }
+
+    /* Nothing reachable. Leave the state IDLE rather than FAILED so the portal
+     * shows the setup form instead of an error about the last one tried -
+     * being somewhere new is not a failure. */
+    esp_wifi_disconnect();
+    s_state = ORBIE_WIFI_IDLE;
+    s_ssid[0] = '\0';
+    s_max_retries   = 5;
+    s_trying_stored = false;
+    ESP_LOGW(TAG, "none of the %d stored networks are in range - portal only", n);
+    vTaskDelete(NULL);
+}
+
 void wifi_portal_init(void)
 {
     esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID,
                                         on_wifi_event, NULL, NULL);
     esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP,
                                         on_wifi_event, NULL, NULL);
-
-    char ssid[33] = "", pass[65] = "";
-    if (creds_load(ssid, sizeof(ssid), pass, sizeof(pass))) {
-        ESP_LOGI(TAG, "stored credentials found for \"%s\"", ssid);
-        sta_connect(ssid, pass);
-    } else {
-        ESP_LOGI(TAG, "no stored credentials - portal only");
-    }
+    xTaskCreate(sta_try_stored_task, "wifi_try", 4096, NULL, 5, NULL);
 }
 
 orbie_wifi_state_t wifi_portal_state(void) { return s_state; }
@@ -237,7 +373,7 @@ void wifi_portal_start_dns(void)
 static const char PORTAL_HTML[] =
 "<!doctype html><html><head><meta charset='utf-8'>"
 "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-"<title>Orbie Wi-Fi Setup</title><style>"
+"<title>Orbie</title><style>"
 "*{box-sizing:border-box;margin:0;padding:0}"
 "body{background:#111;color:#eee;font:16px -apple-system,system-ui,Arial;padding:24px 18px;max-width:460px;margin:0 auto}"
 "h1{font-size:22px;margin-bottom:4px}"
@@ -252,11 +388,15 @@ static const char PORTAL_HTML[] =
 "#msg.busy{display:block;background:#1a2433;color:#8fb8e6;border:1px solid #294056}"
 ".row{display:flex;gap:8px}.row select{flex:1}"
 ".pw{position:relative}.pw input{padding-right:74px}"
+"#openbrowser{display:block;text-align:center;padding:12px;margin-bottom:6px;border:1px solid #333;border-radius:10px;color:#9ab;text-decoration:none;font-size:14px}"
+".addr{color:#666;font-size:12px;text-align:center;margin-bottom:18px}"
 "#eye{position:absolute;right:6px;top:6px;width:auto;margin:0;padding:8px 12px;background:#2a2a2a;color:#bbb;font-size:13px;font-weight:500;border-radius:7px}"
 ".rescan{width:auto;padding:13px 16px;margin:0;background:#2a2a2a;font-size:14px}"
 "</style></head><body>"
 "<h1>Connect Orbie to Wi-Fi</h1>"
 "<p class='sub'>Pick your home network so Orbie can reach the internet.</p>"
+"<a id='openbrowser' href='http://" PORTAL_IP "/' target='_blank' rel='noopener'>Open Orbie in your browser</a>"
+"<p class='addr'>If this window closes, open <b>" PORTAL_IP "</b> in Safari or Chrome.</p>"
 "<label>Network</label>"
 "<div class='row'><select id='ssid' onchange='pick()'><option>Scanning...</option></select>"
 "<button class='rescan' onclick='scan()'>Rescan</button></div>"
@@ -312,8 +452,49 @@ static const char PORTAL_HTML[] =
 "scan();"
 "</script></body></html>";
 
+/* Shown when the robot is already online. Deliberately tiny: the captive
+ * sheet is a cut-down browser that handles an MJPEG stream and a dozen
+ * background fetches badly, so redirecting it straight into the control panel
+ * looked like the firmware had hung. Hand the user to a real browser instead. */
+static esp_err_t connected_handoff(httpd_req_t *req)
+{
+    char page[1400];
+    snprintf(page, sizeof(page),
+        "<!doctype html><html><head><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        "<title>Orbie</title><style>"
+        "body{background:#111;color:#eee;font:16px -apple-system,system-ui,Arial;"
+        "padding:34px 20px;max-width:440px;margin:0 auto;text-align:center}"
+        "h1{font-size:22px;margin-bottom:6px}p{color:#8a8a8a;font-size:14px;line-height:1.55}"
+        "a{display:block;padding:15px;margin:20px 0 10px;border-radius:11px;background:#e94560;"
+        "color:#fff;text-decoration:none;font-weight:600}"
+        "a.sec{background:#242424;color:#9ab;font-weight:400;font-size:14px}"
+        "code{color:#7ee2a8}</style></head><body>"
+        "<h1>Orbie is online</h1>"
+        "<p>Connected to <b>%s</b> at <code>%s</code>.</p>"
+        "<a href='http://%s/'>Open the controls</a>"
+        "<p>If the camera does not load here, open <code>%s</code> in Safari or "
+        "Chrome &mdash; this sign-in window is a limited browser.</p>"
+        "<a class='sec' href='/portal?setup=1'>Change Wi-Fi network</a>"
+        "</body></html>",
+        s_ssid, s_ip, s_ip[0] ? s_ip : PORTAL_IP, s_ip[0] ? s_ip : PORTAL_IP);
+
+    httpd_resp_set_type(req, "text/html");
+    return httpd_resp_send(req, page, HTTPD_RESP_USE_STRLEN);
+}
+
 static esp_err_t portal_get(httpd_req_t *req)
 {
+    /* Reached by a probe redirect or by hand. Either way, an already-connected
+     * robot should show its controls rather than ask for Wi-Fi again. A
+     * ?setup=1 query forces the form, for changing networks on purpose. */
+    char query[32], force[8] = {0};
+    bool wants_setup = (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK &&
+                        httpd_query_key_value(query, "setup", force, sizeof(force)) == ESP_OK);
+
+    if (s_state == ORBIE_WIFI_CONNECTED && !wants_setup) {
+        return connected_handoff(req);
+    }
     httpd_resp_set_type(req, "text/html");
     return httpd_resp_send(req, PORTAL_HTML, HTTPD_RESP_USE_STRLEN);
 }
@@ -322,6 +503,11 @@ static esp_err_t portal_get(httpd_req_t *req)
  * the sign-in sheet appear automatically on iOS and Android. */
 static esp_err_t probe_redirect(httpd_req_t *req)
 {
+    /* The phone's probe fails whenever it is on the robot's AP, because the
+     * robot is an access point and not a gateway - it has no route to give.
+     * That is true even when the robot itself is happily on Wi-Fi, so without
+     * this check the setup form reappears every single time. If we are already
+     * online there is nothing to set up: go straight to the controls. */
     httpd_resp_set_status(req, "302 Found");
     httpd_resp_set_hdr(req, "Location", "http://" PORTAL_IP "/portal");
     httpd_resp_set_hdr(req, "Connection", "close");
@@ -391,7 +577,7 @@ static esp_err_t connect_post(httpd_req_t *req)
     const char *pass = cJSON_IsString(jp) ? jp->valuestring : "";
 
     /* Save first: a reboot mid-association should still remember the choice. */
-    creds_save(js->valuestring, pass);
+    nets_remember(js->valuestring, pass);
     sta_connect(js->valuestring, pass);
     cJSON_Delete(root);
 
@@ -435,15 +621,29 @@ esp_err_t wifi_portal_register(httpd_handle_t server)
         { .uri = "/success.txt",         .method = HTTP_GET,  .handler = probe_redirect }, /* Firefox        */
         { .uri = "/canonical.html",      .method = HTTP_GET,  .handler = probe_redirect }, /* Ubuntu/Android */
     };
+    /* Keep going if one probe route cannot be registered. Returning early
+     * used to skip the 404 handler below, which is the single most important
+     * registration here - it is what makes an unlisted probe URL land on the
+     * portal, and losing it silently stops the captive page appearing. */
+    int failed = 0;
     for (int i = 0; i < (int)(sizeof(uris) / sizeof(uris[0])); i++) {
         esp_err_t err = httpd_register_uri_handler(server, &uris[i]);
         if (err != ESP_OK) {
             ESP_LOGE(TAG, "register %s failed: %s", uris[i].uri, esp_err_to_name(err));
-            return err;
+            failed++;
         }
     }
+
     /* Anything else on the AP also lands on the portal. */
-    httpd_register_err_handler(server, HTTPD_404_NOT_FOUND, not_found_redirect);
+    esp_err_t err404 = httpd_register_err_handler(server, HTTPD_404_NOT_FOUND,
+                                                  not_found_redirect);
+    if (err404 != ESP_OK) {
+        ESP_LOGE(TAG, "404 catch-all NOT registered (%s) - the captive portal "
+                      "will not pop up on its own", esp_err_to_name(err404));
+    }
+    if (failed) {
+        ESP_LOGW(TAG, "%d probe route(s) unregistered; the 404 catch-all covers them", failed);
+    }
     ESP_LOGI(TAG, "portal registered at http://" PORTAL_IP "/portal");
     return ESP_OK;
 }
