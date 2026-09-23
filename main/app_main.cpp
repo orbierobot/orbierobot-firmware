@@ -1486,17 +1486,6 @@ extern "C" void app_main(void)
     init_temp_sensor();
     init_display(i2c_bus);
 
-    /* Boot-stage beacon. The console is unusable on this board (primary console
-     * is UART0 = GPIO43, which we ground above), so each stage paints the face a
-     * solid colour. Whatever colour the robot is stuck on says how far it got:
-     *   RED     display up          ORANGE  speaker up
-     *   YELLOW  greeting task spawned                GREEN   boot animation done
-     *   CYAN    demo reel done      BLUE    Wi-Fi AP up
-     *   MAGENTA web server up (then the normal face) */
-#define BOOT_BEACON(r,g,b) do { display_solid((r),(g),(b)); \
-                                vTaskDelay(pdMS_TO_TICKS(600)); } while (0)
-
-    BOOT_BEACON(60, 0, 0);          /* RED: display initialised */
 
     /* Firmware version on the face, before anything else animates. The only
      * way to confirm an OTA actually landed without plugging in a cable. */
@@ -1526,24 +1515,18 @@ extern "C" void app_main(void)
     volume_load();   /* before the greeting, which is the loudest thing we play */
     api_base_load();
     ESP_LOGI(TAG, "Volume: %d%%", volume_pct);
-    BOOT_BEACON(60, 25, 0);         /* ORANGE: I2S speaker initialised */
 
     /* Boot animation: LED face + voice greeting playing in parallel */
     xTaskCreate([](void*) { play_boot_sound(); vTaskDelete(NULL); }, "boot_snd", 8192, NULL, 3, NULL);
-    BOOT_BEACON(60, 60, 0);         /* YELLOW: greeting task spawned */
 
     display_play_boot_animation();
-    BOOT_BEACON(0, 60, 0);          /* GREEN: boot animation survived */
 
     /* Demo reel: heart -> star -> loader -> rainbow (~6.8s), runs while the
      * 7.9s greeting is still playing so the two finish together. */
     display_play_demo_sequence();
-    BOOT_BEACON(0, 60, 60);         /* CYAN: demo reel survived */
 
     start_wifi_ap();
-    BOOT_BEACON(0, 0, 60);          /* BLUE: Wi-Fi AP up */
     start_webserver();
-    BOOT_BEACON(60, 0, 60);         /* MAGENTA: web server up - boot complete */
     display_look_direction(EYE_CENTER);
 
     /* 1536 was too tight to log from: %f formatting alone costs over a

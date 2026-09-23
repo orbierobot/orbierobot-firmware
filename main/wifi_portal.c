@@ -397,7 +397,9 @@ static const char PORTAL_HTML[] =
 "<h1>Connect Orbie to Wi-Fi</h1>"
 "<p class='sub'>Pick your home network so Orbie can reach the internet.</p>"
 "<a id='openbrowser' href='http://" PORTAL_IP "/' target='_blank' rel='noopener'>Open Orbie in your browser</a>"
-"<p class='addr'>If this window closes, open <b>" PORTAL_IP "</b> in Safari or Chrome.</p>"
+"<p class='addr'>No address bar here? Open <b>" PORTAL_IP "</b> in Safari or Chrome.</p>"
+"<p class='addr'><a href='http://" PORTAL_IP "/' target='_blank' rel='noopener' "
+"style='color:#9ab'>Open the control panel &rarr;</a></p>"
 "<p class='addr' id='fw'></p>"
 "<label>Network</label>"
 "<div class='row'><select id='ssid' onchange='pick()'><option>Scanning...</option></select>"
@@ -462,7 +464,9 @@ static const char PORTAL_HTML[] =
  * looked like the firmware had hung. Hand the user to a real browser instead. */
 static esp_err_t connected_handoff(httpd_req_t *req)
 {
-    char page[1400];
+    /* Grew when the copy-link and second hyperlink were added; -Werror=
+     * format-truncation catches this the moment it is too small. */
+    char page[2600];
     snprintf(page, sizeof(page),
         "<!doctype html><html><head><meta charset='utf-8'>"
         "<meta name='viewport' content='width=device-width,initial-scale=1'>"
@@ -473,16 +477,41 @@ static esp_err_t connected_handoff(httpd_req_t *req)
         "a{display:block;padding:15px;margin:20px 0 10px;border-radius:11px;background:#e94560;"
         "color:#fff;text-decoration:none;font-weight:600}"
         "a.sec{background:#242424;color:#9ab;font-weight:400;font-size:14px}"
-        "code{color:#7ee2a8}</style></head><body>"
+        "code{color:#7ee2a8;font-size:15px;user-select:all;-webkit-user-select:all}"
+        ".url{display:flex;align-items:center;gap:8px;justify-content:center;"
+        "background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:11px;margin:10px 0}"
+        ".url button{background:#2f2f2f;color:#ddd;border:0;border-radius:7px;"
+        "padding:7px 13px;font-size:13px;font-family:inherit}"
+        "#cpd{color:#7ee2a8;font-size:12px;min-height:16px}</style></head><body>"
         "<h1>Orbie is online</h1>"
-        "<p>Connected to <b>%s</b> at <code>%s</code>.<br>Firmware <b>%s</b></p>"
-        "<a href='http://%s/'>Open the controls</a>"
-        "<p>If the camera does not load here, open <code>%s</code> in Safari or "
-        "Chrome &mdash; this sign-in window is a limited browser.</p>"
+        "<p>Connected to <b>%s</b><br>Firmware <b>%s</b></p>"
+        "<a href='http://" PORTAL_IP "/'>Open the controls</a>"
+        "<a class='sec' href='http://" PORTAL_IP "/' target='_blank' rel='noopener'>"
+        "Open in Safari / Chrome</a>"
+        "<p>This sign-in window has no address bar and is a limited browser, so "
+        "the camera may not load here.</p>"
+        "<div class='url'><code id='u'>http://" PORTAL_IP "/</code>"
+        "<button onclick='cp()'>Copy</button></div>"
+        "<p id='cpd'></p>"
+        "<p>On <b>%s</b> the same page is at <code>http://%s</code>.</p>"
+        "<script>function cp(){var t=document.getElementById('u').textContent;"
+        "function done(){document.getElementById('cpd').textContent='Copied - paste it into Safari.';}"
+        "if(navigator.clipboard&&navigator.clipboard.writeText){"
+        "navigator.clipboard.writeText(t).then(done).catch(sel);}else{sel();}"
+        "function sel(){var r=document.createRange();r.selectNode(document.getElementById('u'));"
+        "var s=window.getSelection();s.removeAllRanges();s.addRange(r);"
+        "try{document.execCommand('copy');done();}catch(e){"
+        "document.getElementById('cpd').textContent='Select the address above and copy it.';}}}"
+        "</script>"
         "<a class='sec' href='/portal?setup=1'>Change Wi-Fi network</a>"
         "</body></html>",
-        s_ssid, s_ip, esp_app_get_description()->version,
-        s_ip[0] ? s_ip : PORTAL_IP, s_ip[0] ? s_ip : PORTAL_IP);
+        /* The link MUST be the AP address: whoever is reading this joined
+         * ORBIE_xxxx to get here, and the robot's address on the owner's LAN
+         * is on a different subnet they cannot route to. Pointing at it made
+         * the button do nothing at all. The LAN address is still worth showing
+         * - it is how they reach the robot later, from their own network. */
+        s_ssid, esp_app_get_description()->version, s_ssid,
+        s_ip[0] ? s_ip : "(not connected)");
 
     httpd_resp_set_type(req, "text/html");
     return httpd_resp_send(req, page, HTTPD_RESP_USE_STRLEN);
