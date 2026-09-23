@@ -999,6 +999,41 @@ static void test_motors_task(void *pv)
     vTaskDelete(NULL);
 }
 
+static char expr_pending[16] = "";
+
+static void expr_task(void *pv)
+{
+    display_play_named(expr_pending);
+    /* Animations leave the face wherever they ended; settle it. */
+    if (strcmp(expr_pending, "centre") && strcmp(expr_pending, "center") &&
+        strcmp(expr_pending, "up") && strcmp(expr_pending, "down") &&
+        strcmp(expr_pending, "left") && strcmp(expr_pending, "right")) {
+        display_look_direction(EYE_CENTER);
+    }
+    vTaskDelete(NULL);
+}
+
+static esp_err_t expr_handler(httpd_req_t *req)
+{
+    char query[48], what[16] = {0};
+    if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK) {
+        httpd_query_key_value(query, "show", what, sizeof(what));
+    }
+    if (!what[0]) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "show is required");
+        return ESP_FAIL;
+    }
+    strlcpy(expr_pending, what, sizeof(expr_pending));
+    /* In a task: the reel is several seconds and would block the HTTP worker. */
+    xTaskCreate(expr_task, "expr", 4096, NULL, 4, NULL);
+
+    char out[64];
+    snprintf(out, sizeof(out), "{\"ok\":true,\"show\":\"%s\"}", what);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_sendstr(req, out);
+    return ESP_OK;
+}
+
 static esp_err_t test_handler(httpd_req_t *req)
 {
     char query[48], what[16] = {0};
@@ -1300,6 +1335,7 @@ static void start_webserver(void)
             { .uri = "/beep",   .method = HTTP_GET,  .handler = beep_handler },
             { .uri = "/volume", .method = HTTP_GET,  .handler = volume_handler },
             { .uri = "/test",   .method = HTTP_GET,  .handler = test_handler },
+            { .uri = "/expr",   .method = HTTP_GET,  .handler = expr_handler },
             { .uri = "/api/whoami", .method = HTTP_GET, .handler = whoami_handler },
             { .uri = "/capture", .method = HTTP_GET,  .handler = capture_handler },
             { .uri = "/say",    .method = HTTP_POST, .handler = say_handler },

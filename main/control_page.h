@@ -29,6 +29,13 @@ static const char CONTROL_PAGE_HTML[] =
 "input[type=range]{flex:1;accent-color:#e94560}"
 ".val{font-size:12px;color:#999;width:42px;text-align:right;flex:none}"
 ".grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}"
+".icons{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}"
+".icons button{display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px 4px;font-size:10px;color:#9a9a9a;line-height:1}"
+".icons .em{font-size:22px;line-height:1}"
+".says{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}"
+".says button{font-size:13px;padding:11px 8px;text-align:left}"
+"textarea{width:100%;padding:12px;border-radius:10px;border:1px solid #333;background:#1c1c1c;color:#eee;font:15px inherit;resize:vertical;min-height:62px}"
+"#saybtn{width:100%;margin-top:8px;background:#1f6f43;font-weight:600}"
 "button{border:0;border-radius:10px;background:#242424;color:#eee;font-size:14px;padding:13px 10px;font-family:inherit}"
 "button:active{transform:scale(.97)}"
 "button.p{background:#e94560;font-weight:600}"
@@ -44,7 +51,7 @@ static const char CONTROL_PAGE_HTML[] =
 "</style></head><body><div class='wrap'>"
 
 "<img id='stream' src='/stream81'>"
-"<div id='info'>Connecting…</div>"
+"<div id='info'>Connecting&#8230;</div>"
 
 "<h2>Drive</h2>"
 "<div class='card'>"
@@ -62,6 +69,30 @@ static const char CONTROL_PAGE_HTML[] =
 "<div class='row'><span class='lbl'>Volume</span>"
 "<input id='vol' type='range' min='0' max='100' value='8' oninput='vl(this.value)'>"
 "<span class='val' id='volv'>8%</span></div>"
+"</div>"
+
+"<h2>Face</h2>"
+"<div class='card'><div class='icons'>"
+"<button onclick=\"ex('heart')\"><span class='em'>&#10084;&#65039;</span>Heart</button>"
+"<button onclick=\"ex('star')\"><span class='em'>&#11088;</span>Star</button>"
+"<button onclick=\"ex('rainbow')\"><span class='em'>&#127752;</span>Rainbow</button>"
+"<button onclick=\"ex('loader')\"><span class='em'>&#9203;</span>Thinking</button>"
+"<button onclick=\"ex('blink')\"><span class='em'>&#128522;</span>Blink</button>"
+"<button onclick=\"ex('bliss')\"><span class='em'>&#128525;</span>Bliss</button>"
+"<button onclick=\"ex('wakeup')\"><span class='em'>&#128064;</span>Wake</button>"
+"<button onclick=\"ex('centre')\"><span class='em'>&#9673;</span>Neutral</button>"
+"</div></div>"
+
+"<h2>Speak</h2>"
+"<div class='card'>"
+"<div class='says'>"
+"<button onclick=\"say(this.textContent)\">Hi there, I'm Orbie.</button>"
+"<button onclick=\"say(this.textContent)\">Lovely to meet you!</button>"
+"<button onclick=\"say(this.textContent)\">I'm a little rolling robot.</button>"
+"<button onclick=\"say(this.textContent)\">Shall we go exploring?</button>"
+"</div>"
+"<textarea id='txt' placeholder='Type anything and Orbie will say it\u2026' maxlength='400'></textarea>"
+"<button id='saybtn' onclick=\"say(document.getElementById('txt').value)\">Say it</button>"
 "</div>"
 
 "<h2>Test</h2>"
@@ -88,9 +119,25 @@ static const char CONTROL_PAGE_HTML[] =
 "document.getElementById('stream').src='http://'+location.hostname+':81/stream';"
 
 "function show(t,bad){var r=document.getElementById('res');r.textContent=t;r.className=bad?'err':'';}"
-"function t(w){show('Running '+w+'…');fetch('/test?run='+w).then(r=>r.json())"
+"function t(w){show('Running '+w+'&#8230;');fetch('/test?run='+w).then(r=>r.json())"
 ".then(d=>show(d.msg)).catch(()=>show('Request failed',1));}"
 "function laser(){fetch('/laser').then(r=>r.text()).then(x=>show('Laser '+x)).catch(()=>show('Request failed',1));}"
+"function ex(n){fetch('/expr?show='+n).then(r=>r.json()).then(function(){show(n);}).catch(()=>show('Request failed',1));}"
+/* Speech is synthesised in the cloud and played by the robot. This page is
+   HTTP on the LAN and may call HTTPS (the reverse is what browsers block), so
+   it fetches the PCM itself and hands the bytes straight to /say - no queue,
+   no polling, and it works even when Redis is down. */
+"var API='';"
+"function say(t){t=(t||'').trim();if(!t){show('Nothing to say',1);return;}"
+"if(!API){show('Cloud address unknown',1);return;}"
+"var b=document.getElementById('saybtn');b.disabled=true;show('Synthesising\u2026');"
+"fetch(API+'/api/speak',{method:'POST',headers:{'Content-Type':'application/json'},"
+"body:JSON.stringify({text:t})})"
+".then(function(r){if(!r.ok)throw new Error('speak '+r.status);return r.arrayBuffer();})"
+".then(function(buf){show('Playing '+(buf.byteLength/32000).toFixed(1)+'s\u2026');"
+"return fetch('/say',{method:'POST',body:buf});})"
+".then(function(){show('Said it');}).catch(function(e){show(String(e.message||e),1);})"
+".then(function(){b.disabled=false;});}"
 
 "var hdT=0;function hd(v){document.getElementById('headv').textContent=v;"
 "clearTimeout(hdT);hdT=setTimeout(function(){fetch('/head?pos='+v).catch(function(){});},60);}"
@@ -107,6 +154,7 @@ static const char CONTROL_PAGE_HTML[] =
 
 /* Push-to-talk is hosted over HTTPS elsewhere; pass the robot id along. */
 "fetch('/api/whoami').then(r=>r.json()).then(function(d){"
+"API=d.api;"
 "document.getElementById('talk').href=d.api+'/talk?robot='+encodeURIComponent(d.robot);"
 "document.getElementById('ver').textContent=d.robot+' \u00b7 firmware '+d.version+' \u00b7 built '+d.built;"
 "}).catch(function(){});"

@@ -287,6 +287,25 @@ void display_play_rainbow(int loops)
     play_anim(expr_rainbow_anim, EXPR_RAINBOW_FRAME_COUNT, loops);
 }
 
+bool display_play_named(const char *name)
+{
+    if      (!strcmp(name, "heart"))   display_play_heart(3);
+    else if (!strcmp(name, "star"))    display_play_star(3);
+    else if (!strcmp(name, "loader"))  display_play_loader(3);
+    else if (!strcmp(name, "rainbow")) display_play_rainbow(2);
+    else if (!strcmp(name, "blink"))   display_play_blink();
+    else if (!strcmp(name, "bliss"))   display_play_center_to_bliss();
+    else if (!strcmp(name, "wakeup"))  display_play_boot_animation();
+    else if (!strcmp(name, "centre") || !strcmp(name, "center"))
+                                       display_look_direction(EYE_CENTER);
+    else if (!strcmp(name, "up"))      display_look_direction(EYE_UP);
+    else if (!strcmp(name, "down"))    display_look_direction(EYE_DOWN);
+    else if (!strcmp(name, "left"))    display_look_direction(EYE_LEFT);
+    else if (!strcmp(name, "right"))   display_look_direction(EYE_RIGHT);
+    else return false;
+    return true;
+}
+
 void display_play_demo_sequence(void)
 {
     ESP_LOGI(TAG, "Demo reel: heart -> star -> loader -> rainbow");

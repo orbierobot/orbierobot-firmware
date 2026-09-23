@@ -116,6 +116,15 @@ void display_solid(uint8_t r, uint8_t g, uint8_t b);
  */
 void display_show_text4(const char *text, uint8_t r, uint8_t g, uint8_t b);
 
+/**
+ * @brief Play one expression by name, for the control panel.
+ *
+ * Accepts: heart, star, loader, rainbow, blink, bliss, wakeup,
+ *          centre/center, up, down, left, right.
+ * Returns false if the name is unknown. Blocks for the animation.
+ */
+bool display_play_named(const char *name);
+
 /* ========== Demo Expressions ========== */
 /* Each blocks for loops * (frames * frame duration). See demo_expressions.h. */
 
