@@ -1297,6 +1297,82 @@ static esp_err_t whoami_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
+/* ==================== Recovery ====================
+ *
+ * Two things can go wrong that leave a robot unusable but still running, and
+ * both are recoverable without a cable:
+ *
+ *   - A bad update. The partition table is dual-slot with rollback enabled,
+ *     so the previous image is still sitting there intact.
+ *   - Wrong or stale Wi-Fi credentials, or a device key that no longer
+ *     matches the server. The robot is then unreachable on the LAN but its
+ *     own AP still comes up.
+ *
+ * A robot that will not boot at all is not recoverable this way - nothing is
+ * listening - and needs USB. Both are gated like OTA: the robot's own AP (or
+ * the owner's LAN in dev builds) plus the update token, because either one
+ * hands control of the device to whoever calls it.
+ */
+
+static esp_err_t rollback_handler(httpd_req_t *req)
+{
+    if (!ota_request_from_ap(req) || !ota_token_ok(req)) {
+        httpd_resp_send_err(req, HTTPD_403_FORBIDDEN, "Not allowed from here.");
+        return ESP_FAIL;
+    }
+
+    const esp_partition_t *other = esp_ota_get_next_update_partition(NULL);
+    if (!other) {
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "No other partition");
+        return ESP_FAIL;
+    }
+
+    /* Refuse when the other slot holds nothing bootable, rather than setting
+     * the boot partition and rebooting into a brick. */
+    esp_app_desc_t desc;
+    if (esp_ota_get_partition_description(other, &desc) != ESP_OK) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST,
+                            "No previous firmware to roll back to.");
+        return ESP_FAIL;
+    }
+
+    esp_err_t err = esp_ota_set_boot_partition(other);
+    if (err != ESP_OK) {
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Could not switch partition");
+        return ESP_FAIL;
+    }
+
+    ESP_LOGW(TAG, "rolling back to %s (%s)", other->label, desc.version);
+    char out[96];
+    snprintf(out, sizeof(out), "{\"ok\":true,\"version\":\"%s\"}", desc.version);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_sendstr(req, out);
+    vTaskDelay(pdMS_TO_TICKS(500));
+    esp_restart();
+    return ESP_OK;
+}
+
+static esp_err_t factory_reset_handler(httpd_req_t *req)
+{
+    if (!ota_request_from_ap(req) || !ota_token_ok(req)) {
+        httpd_resp_send_err(req, HTTPD_403_FORBIDDEN, "Not allowed from here.");
+        return ESP_FAIL;
+    }
+
+    /* Erase NVS, not the firmware: Wi-Fi networks, the device key, the API
+     * base and the volume all live there. The robot comes back on the same
+     * image, having forgotten everything it was told, and opens its own AP
+     * so it can be set up again from scratch. */
+    ESP_LOGW(TAG, "factory reset requested - erasing NVS");
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_sendstr(req, "{\"ok\":true,\"erased\":\"settings\"}");
+
+    vTaskDelay(pdMS_TO_TICKS(500));
+    nvs_flash_erase();
+    esp_restart();
+    return ESP_OK;
+}
+
 static esp_err_t volume_handler(httpd_req_t *req)
 {
     char query[48], val[12];
@@ -1571,6 +1647,8 @@ static void start_webserver(void)
             { .uri = "/motor",  .method = HTTP_GET,  .handler = motor_handler },
             { .uri = "/beep",   .method = HTTP_GET,  .handler = beep_handler },
             { .uri = "/volume", .method = HTTP_GET,  .handler = volume_handler },
+            { .uri = "/ota/rollback",  .method = HTTP_POST, .handler = rollback_handler },
+            { .uri = "/factory-reset", .method = HTTP_POST, .handler = factory_reset_handler },
             { .uri = "/test",   .method = HTTP_GET,  .handler = test_handler },
             { .uri = "/expr",   .method = HTTP_GET,  .handler = expr_handler },
             { .uri = "/api/whoami", .method = HTTP_GET, .handler = whoami_handler },
