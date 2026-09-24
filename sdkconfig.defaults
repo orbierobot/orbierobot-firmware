@@ -40,3 +40,19 @@ CONFIG_BT_NIMBLE_ROLE_BROADCASTER=y
 CONFIG_BT_NIMBLE_ROLE_CENTRAL=n
 CONFIG_BT_NIMBLE_ROLE_OBSERVER=n
 CONFIG_BT_NIMBLE_MAX_CONNECTIONS=1
+
+# TLS working memory.
+#
+# mbedtls takes its buffers from internal DRAM, and the 16KB default input
+# buffer is per connection. On this board the camera framebuffers, two HTTP
+# servers and TLS all compete for roughly 300KB of it, and the low-water mark
+# reached 51 bytes: handshakes started failing with ALLOC_FAILED and sockets
+# with ENFILE, which read like a bad CA bundle until free_internal was
+# reported separately from the PSRAM-inflated total.
+#
+# 8KB still covers the records this API sends. The dynamic buffer is the
+# bigger win - without it the buffer is held for the life of the connection
+# rather than released between handshakes.
+CONFIG_MBEDTLS_SSL_IN_CONTENT_LEN=8192
+CONFIG_MBEDTLS_DYNAMIC_BUFFER=y
+CONFIG_MBEDTLS_DYNAMIC_FREE_CONFIG_DATA=y
