@@ -571,6 +571,24 @@ static void speaker_end(void)
 static void init_speaker(void)
 {
     i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_AUTO, I2S_ROLE_MASTER);
+
+    /* Zero the DMA buffer once a block has been sent.
+     *
+     * Disabling the channel between clips (see speaker_begin) stops the clocks
+     * but leaves the last ~1440 samples sitting in the DMA descriptors. The
+     * next enable clocks that stale tail out before the new audio arrives, so
+     * the first utterance after boot sounded right and every one after it
+     * opened with a burst of the previous clip - about 90ms of noise at 16kHz.
+     * With auto_clear the driver sends silence instead of whatever was left. */
+    chan_cfg.auto_clear = true;
+
+    /* Deeper DMA than the 6x240 default, which is only about 90ms at 16kHz.
+     * That was the entire margin playback had against a late write, and it
+     * was not enough. ~256ms costs a few KB and covers a hiccup that short
+     * buffers turned into an audible click. */
+    chan_cfg.dma_desc_num  = 8;
+    chan_cfg.dma_frame_num = 512;
+
     if (i2s_new_channel(&chan_cfg, &speaker_handle, NULL) != ESP_OK) {
         ESP_LOGW(TAG, "Speaker channel creation failed");
         return;
@@ -1047,47 +1065,71 @@ static esp_err_t capture_handler(httpd_req_t *req)
 
 static esp_err_t say_handler(httpd_req_t *req)
 {
-    if (!speaker_begin()) {
-        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Speaker unavailable or busy");
-        return ESP_FAIL;
-    }
     if (req->content_len <= 0 || req->content_len > SAY_MAX_BYTES) {
         httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Bad length (max 30s of 16k mono PCM)");
         return ESP_FAIL;
     }
 
-    const int CHUNK = 2048;
-    uint8_t *buf = (uint8_t *)malloc(CHUNK);
-    if (!buf) {
-        speaker_end();
+    /* Download the whole clip before a single sample reaches the speaker.
+     *
+     * This used to read 2KB off the socket and hand it straight to I2S, so
+     * playback ran in lockstep with the network. The DMA holds about 90ms of
+     * audio, so any Wi-Fi stall longer than that drained it mid-word and the
+     * amplifier clicked - speech came out cracked and uneven rather than
+     * smooth. Buffering first decouples the two: the network can stutter all
+     * it likes while downloading, and playback then runs at a steady rate off
+     * RAM. The ceiling is 30s of 16k mono - under a megabyte - against
+     * megabytes of free PSRAM, so the whole clip fits comfortably. */
+    const int total_len = req->content_len;
+    uint8_t *clip = (uint8_t *)heap_caps_malloc(total_len, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (!clip) clip = (uint8_t *)malloc(total_len);   /* no PSRAM: try internal */
+    if (!clip) {
         httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Out of memory");
         return ESP_FAIL;
     }
 
-    int remaining = req->content_len;
-    size_t written = 0, total = 0;
-    while (remaining > 0) {
-        int want = remaining < CHUNK ? remaining : CHUNK;
-        int got  = httpd_req_recv(req, (char *)buf, want);
+    int received = 0;
+    while (received < total_len) {
+        int got = httpd_req_recv(req, (char *)clip + received, total_len - received);
         if (got <= 0) {
-            free(buf);
-            speaker_end();
-            ESP_LOGW(TAG, "/say upload aborted after %u bytes", (unsigned)total);
+            free(clip);
+            ESP_LOGW(TAG, "/say upload aborted after %d bytes", received);
             return ESP_FAIL;   /* socket is already gone; no response to send */
         }
-        /* got is a byte count; the payload is 16-bit samples. An odd tail
-         * would split a sample, so scale only whole ones. */
-        int16_t *s16 = (int16_t *)buf;
-        int vol = volume_pct;
-        for (int i = 0; i < got / 2; i++) {
-            s16[i] = (int16_t)(((int32_t)s16[i] * vol) / 100);
-        }
-        i2s_channel_write(speaker_handle, buf, got, &written, pdMS_TO_TICKS(2000));
-        remaining -= got;
-        total     += got;
+        received += got;
     }
-    free(buf);
+
+    /* `received` is a byte count and the payload is 16-bit samples; an odd
+     * tail would split one, so only whole samples are scaled. */
+    int16_t *s16 = (int16_t *)clip;
+    const int vol = volume_pct;
+    for (int i = 0; i < received / 2; i++) {
+        s16[i] = (int16_t)(((int32_t)s16[i] * vol) / 100);
+    }
+
+    /* Claim the speaker only now. Enabling it up front left the amplifier
+     * clocking an idle channel for the whole download, which is audible, and
+     * held the audio mutex against anything else that wanted to make a
+     * sound. */
+    if (!speaker_begin()) {
+        free(clip);
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Speaker unavailable or busy");
+        return ESP_FAIL;
+    }
+
+    size_t written = 0, total = 0;
+    while ((int)total < received) {
+        int want = received - (int)total;
+        if (want > 4096) want = 4096;
+        if (i2s_channel_write(speaker_handle, clip + total, want, &written,
+                              pdMS_TO_TICKS(2000)) != ESP_OK) {
+            ESP_LOGW(TAG, "/say I2S write stalled at %u bytes", (unsigned)total);
+            break;
+        }
+        total += written;
+    }
     speaker_end();
+    free(clip);
     ESP_LOGI(TAG, "/say played %u bytes (%.1fs)", (unsigned)total,
              total / (float)(BOOT_PCM_SAMPLE_RATE * 2));
     httpd_resp_sendstr(req, "OK");
@@ -1410,6 +1452,33 @@ static esp_err_t status_handler(httpd_req_t *req)
         cJSON_AddNumberToObject(root, "temp_object", temp_object);
         cJSON_AddStringToObject(root, "wifi_ssid", wifi_portal_ssid());
         cJSON_AddStringToObject(root, "wifi_ip", wifi_portal_ip());
+        /* Heap, because running out of it is not a quiet failure here: TLS
+         * handshakes start failing (mbedtls cannot allocate its working
+         * buffers, which surfaces misleadingly as certificate verification
+         * errors) and the camera stops returning frames. Both looked like a
+         * broken CA bundle and a broken sensor until the heap was visible.
+         * min_free is the low-water mark since boot - a slow leak shows there
+         * long before free_heap on any single poll looks alarming. */
+        cJSON_AddNumberToObject(root, "free_heap", esp_get_free_heap_size());
+        cJSON_AddNumberToObject(root, "min_free_heap", esp_get_minimum_free_heap_size());
+        /* Internal DRAM specifically. The totals above are dominated by PSRAM
+         * and stayed in the megabytes while mbedtls was failing to allocate -
+         * TLS working buffers must come from internal memory, so this is the
+         * number that actually predicts a handshake failure. */
+        cJSON_AddNumberToObject(root, "free_internal",
+                                heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
+        cJSON_AddNumberToObject(root, "min_free_internal",
+                                heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL));
+        /* Whether the robot can currently reach the cloud, and why not.
+         * voice_link has recorded this since it was written, but nothing ever
+         * read it - so a robot that could not fetch its own answers looked
+         * identical to one that simply had nothing to say, and the only way
+         * to find out was a USB cable and a serial console. */
+        cJSON_AddBoolToObject(root, "cloud_online", voice_link_online());
+        {
+            const char *e = voice_link_last_error();
+            cJSON_AddStringToObject(root, "cloud_error", e ? e : "");
+        }
     const char *json = cJSON_PrintUnformatted(root);
     httpd_resp_set_type(req, "application/json");
     esp_err_t res = httpd_resp_sendstr(req, json);

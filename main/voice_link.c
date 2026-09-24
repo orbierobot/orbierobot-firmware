@@ -15,6 +15,10 @@ static const char *TAG = "voice_link";
  * stale, slow enough that a robot left running all day is not hammering a
  * serverless function 43,000 times an hour. */
 #define POLL_INTERVAL_MS   2000
+/* Ceiling for the failure backoff (see voice_task). A minute is slow enough
+ * that an unreachable cloud costs almost no sockets, and quick enough that a
+ * robot recovers on its own shortly after the network comes back. */
+#define MAX_BACKOFF_MS     60000
 /* A frame every 15s keeps "what can you see" roughly current without spending
  * the whole uplink on JPEGs. A push-to-talk press also forces one. */
 #define FRAME_INTERVAL_MS  15000
@@ -172,17 +176,41 @@ static void voice_task(void *pv)
 {
     ESP_LOGI(TAG, "polling %s as %s", s_api, s_robot);
     int since_frame = 0;
+    int backoff_ms  = POLL_INTERVAL_MS;
 
     while (true) {
         poll_once();
 
-        since_frame += POLL_INTERVAL_MS;
-        if (s_want_frame || since_frame >= FRAME_INTERVAL_MS) {
+        /* Back off while the cloud is unreachable.
+         *
+         * This loop used to retry every 2s forever. Each attempt takes a
+         * socket from a pool of 16 that the two HTTP servers are already
+         * most of the way through, and a failed connection leaves its socket
+         * in TIME_WAIT for a good while after. Once the cloud stopped
+         * answering, the retries alone drained the pool in a couple of
+         * minutes: accept() started returning ENFILE, the control page and
+         * camera stopped responding, and TLS could not even allocate - which
+         * read like a memory or certificate fault rather than a robot that
+         * had simply run out of sockets.
+         *
+         * Steady state is unchanged: while calls succeed the interval stays
+         * at POLL_INTERVAL_MS, so answers arrive just as quickly. */
+        if (s_online) {
+            backoff_ms = POLL_INTERVAL_MS;
+        } else if (backoff_ms < MAX_BACKOFF_MS) {
+            backoff_ms *= 2;
+            if (backoff_ms > MAX_BACKOFF_MS) backoff_ms = MAX_BACKOFF_MS;
+        }
+
+        since_frame += backoff_ms;
+        /* No point pushing frames at a server we cannot reach - that is a
+         * second socket per round on top of the poll. */
+        if (s_online && (s_want_frame || since_frame >= FRAME_INTERVAL_MS)) {
             s_want_frame = false;
             since_frame  = 0;
             push_frame();
         }
-        vTaskDelay(pdMS_TO_TICKS(POLL_INTERVAL_MS));
+        vTaskDelay(pdMS_TO_TICKS(backoff_ms));
     }
 }
 
