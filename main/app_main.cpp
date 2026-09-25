@@ -1497,6 +1497,15 @@ static esp_err_t status_handler(httpd_req_t *req)
          * read it - so a robot that could not fetch its own answers looked
          * identical to one that simply had nothing to say, and the only way
          * to find out was a USB cable and a serial console. */
+        /* Why the robot last restarted. Under load it has come back with its
+         * minimum-free-heap counter reset - which only happens on boot - and
+         * without this there is no way to tell a panic from a brownout from a
+         * watchdog after the fact, because the console scrollback is gone by
+         * the time anyone notices. Brownout in particular is a power problem
+         * wearing a software costume. */
+        cJSON_AddNumberToObject(root, "reset_reason", (int)esp_reset_reason());
+        cJSON_AddNumberToObject(root, "uptime_s",
+                                (int)(esp_timer_get_time() / 1000000));
         cJSON_AddBoolToObject(root, "cloud_online", voice_link_online());
         {
             const char *e = voice_link_last_error();
