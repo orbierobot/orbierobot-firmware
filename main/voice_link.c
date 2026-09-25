@@ -28,6 +28,7 @@ static char s_api[96]  = "";
 static char s_robot[24] = "";
 static char s_key[64]  = "";
 static voice_play_fn          s_play;
+static voice_play_done_fn     s_done;
 static voice_frame_fn         s_grab;
 static voice_frame_release_fn s_release;
 
@@ -117,6 +118,11 @@ static void poll_once(void)
         first = false;
         total += n;
     }
+    /* Always, even when nothing arrived: the player takes the speaker on the
+       first chunk and has no other way to learn the clip is over. Skipping
+       this left the audio mutex held for the rest of the boot, so the first
+       answer played and every sound after it failed as "busy". */
+    if (!first && s_done) s_done();
     ESP_LOGI(TAG, "played %d bytes", total);
 
     esp_http_client_close(c);
@@ -218,6 +224,7 @@ void voice_link_start(const char *api_base,
                       const char *robot_id,
                       const char *device_key,
                       voice_play_fn play_pcm,
+                      voice_play_done_fn play_done,
                       voice_frame_fn grab_jpeg,
                       voice_frame_release_fn release_jpeg)
 {
@@ -225,6 +232,7 @@ void voice_link_start(const char *api_base,
     strlcpy(s_robot, robot_id  ? robot_id  : "", sizeof(s_robot));
     strlcpy(s_key,   device_key ? device_key : "", sizeof(s_key));
     s_play    = play_pcm;
+    s_done    = play_done;
     s_grab    = grab_jpeg;
     s_release = release_jpeg;
 
@@ -285,6 +293,7 @@ bool voice_link_say(const char *text)
                 first = false;
                 total += r;
             }
+            if (!first && s_done) s_done();
             ok = total > 0;
             ESP_LOGI(TAG, "said %d bytes", total);
         } else {

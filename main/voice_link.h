@@ -38,11 +38,16 @@ extern "C" {
  * @param play_pcm   called with 16 kHz mono 16-bit PCM to play. Given in
  *                   chunks as they arrive, so a long answer never has to fit
  *                   in RAM; `first` marks the start of a new clip.
+ * @param play_done  called once the last chunk of a clip has been handed
+ *                   over, so the player can release the speaker. Without it
+ *                   a player that claims the audio device on `first` has no
+ *                   idea when to let go, and holds it forever.
  * @param grab_jpeg  called to fetch a camera frame to upload. Return the
  *                   buffer and its length, or NULL to skip. `release` is
  *                   called when the upload finishes.
  */
 typedef void (*voice_play_fn)(const uint8_t *pcm, size_t len, bool first);
+typedef void (*voice_play_done_fn)(void);
 typedef const uint8_t *(*voice_frame_fn)(size_t *len_out);
 typedef void (*voice_frame_release_fn)(void);
 
@@ -50,6 +55,7 @@ void voice_link_start(const char *api_base,
                       const char *robot_id,
                       const char *device_key,
                       voice_play_fn play_pcm,
+                      voice_play_done_fn play_done,
                       voice_frame_fn grab_jpeg,
                       voice_frame_release_fn release_jpeg);
 

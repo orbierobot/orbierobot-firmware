@@ -1142,17 +1142,26 @@ static esp_err_t say_handler(httpd_req_t *req)
  * exists. Playback reuses the same volume-scaled I2S path as the greeting, so
  * an answer obeys the volume slider like everything else. */
 
+/* Whether this path currently holds the audio mutex.
+ *
+ * Without it, a failed speaker_begin() on the first chunk still fell through
+ * to writing the remaining chunks at a channel that was never enabled, and
+ * ptt_play_done() would release a mutex it had never taken. */
+static bool ptt_have_speaker = false;
+
 static void ptt_play_pcm(const uint8_t *pcm, size_t len, bool first)
 {
     /* The channel is enabled on the first chunk and left open for the rest of
      * the clip: toggling it per chunk would click between every 1KB. */
-    if (first && !speaker_begin()) return;
-    if (!speaker_ok) return;
+    if (first) ptt_have_speaker = speaker_begin();
+    if (!ptt_have_speaker || !speaker_ok) return;
     i2s_write_scaled((const int16_t *)pcm, len / 2);
 }
 
 static void ptt_play_done(void)
 {
+    if (!ptt_have_speaker) return;
+    ptt_have_speaker = false;
     speaker_end();
 }
 
@@ -2001,7 +2010,8 @@ extern "C" void app_main(void)
         while (true) {
             if (!started && wifi_portal_state() == ORBIE_WIFI_CONNECTED) {
                 voice_link_start(api_base, wifi_ssid, device_key,
-                                 ptt_play_pcm, ptt_grab_frame, ptt_release_frame);
+                                 ptt_play_pcm, ptt_play_done,
+                                 ptt_grab_frame, ptt_release_frame);
                 started = true;
                 ESP_LOGI(TAG, "push-to-talk link started against %s", api_base);
             }
