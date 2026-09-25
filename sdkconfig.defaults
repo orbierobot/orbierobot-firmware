@@ -53,6 +53,14 @@ CONFIG_BT_NIMBLE_MAX_CONNECTIONS=1
 # 8KB still covers the records this API sends. The dynamic buffer is the
 # bigger win - without it the buffer is held for the life of the connection
 # rather than released between handshakes.
-CONFIG_MBEDTLS_SSL_IN_CONTENT_LEN=8192
+# Take mbedtls out of internal DRAM entirely. Measuring showed this was not
+# a leak - free_internal swings between 2KB and 31KB and recovers - but the
+# robot simply lives too close to the floor, so a handshake that lands on a
+# low point fails and cloud_online flickers. PSRAM has megabytes spare and
+# mbedtls buffers are not DMA, so they belong there. With the buffers off
+# internal memory the input length can go back to the full 16KB, which also
+# removes the risk of a server sending a record larger than a reduced buffer.
+CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC=y
+CONFIG_MBEDTLS_SSL_IN_CONTENT_LEN=16384
 CONFIG_MBEDTLS_DYNAMIC_BUFFER=y
 CONFIG_MBEDTLS_DYNAMIC_FREE_CONFIG_DATA=y
