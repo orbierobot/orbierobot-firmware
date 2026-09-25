@@ -1308,6 +1308,29 @@ static esp_err_t test_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
+/* Hand the stored device key back to whoever asks on the LAN.
+ *
+ * Registration on the server is first-come, so a robot already claimed
+ * refuses a second registration with 409. Reinstalling the app therefore left
+ * it with no key and push-to-talk permanently dead, recoverable only with the
+ * admin key and a manual edit of the app's storage. The robot already holds
+ * the key, so it can simply give it back and the app heals itself.
+ *
+ * This is on the same LAN-only HTTP server that will already drive the motors
+ * and stream the camera to anyone who asks, so it grants nothing that was not
+ * already on offer to the same caller. It is deliberately NOT reachable from
+ * the internet - nothing forwards this port.
+ */
+static esp_err_t key_handler(httpd_req_t *req)
+{
+    char out[96];
+    snprintf(out, sizeof(out), "{\"robot\":\"%s\",\"key\":\"%s\"}",
+             wifi_ssid, device_key);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_sendstr(req, out);
+    return ESP_OK;
+}
+
 static esp_err_t whoami_handler(httpd_req_t *req)
 {
     char query[160], val[96];
@@ -1721,6 +1744,7 @@ static void start_webserver(void)
             { .uri = "/test",   .method = HTTP_GET,  .handler = test_handler },
             { .uri = "/expr",   .method = HTTP_GET,  .handler = expr_handler },
             { .uri = "/api/whoami", .method = HTTP_GET, .handler = whoami_handler },
+            { .uri = "/api/key",    .method = HTTP_GET, .handler = key_handler },
             { .uri = "/capture", .method = HTTP_GET,  .handler = capture_handler },
             { .uri = "/say",    .method = HTTP_POST, .handler = say_handler },
             { .uri = "/head",   .method = HTTP_GET,  .handler = head_handler },
