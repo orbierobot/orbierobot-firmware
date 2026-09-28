@@ -31,7 +31,8 @@ extern "C" {
 /**
  * @brief Start the polling task.
  *
- * @param api_base   e.g. "https://orbie-apis.vercel.app" (no trailing slash)
+ * @param api_base   the server base URL, no trailing slash. Comes from NVS
+ *                   (or API_BASE_DEFAULT); never hardcode one here.
  * @param robot_id   the unit's ORBIE_XXXX name, matching its SSID and label
  * @param device_key sent as X-Orbie-Key, or NULL/"" when the server does not
  *                   enforce one

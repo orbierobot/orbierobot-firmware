@@ -97,7 +97,19 @@ static char ota_token[24] = "";
  * between units - a leak from one robot cannot be used to drive another. */
 #define KEY_NVS_KEY  "device_key"
 static char device_key[40] = "";
-#define API_BASE_DEFAULT "https://orbie-apis.vercel.app"
+/* Only ever used by a robot that has never been told otherwise: once the app
+ * or /api/whoami?api= writes api_base into NVS, that wins and this is dead.
+ * Overridable at build time so moving the API does not mean editing source:
+ *
+ *   idf.py build -DORBIE_API_BASE='"https://apis.orbierobot.com"'
+ *
+ * Keep the fallback in step with kOrbieApiBase in the app's api_config.dart -
+ * a robot and an app that disagree about the server register in one place and
+ * ask questions in another. */
+#ifndef ORBIE_API_BASE
+#define ORBIE_API_BASE "https://orbie-apis.vercel.app"
+#endif
+#define API_BASE_DEFAULT ORBIE_API_BASE
 static char api_base[96] = API_BASE_DEFAULT;
 
 static void api_base_load(void)
