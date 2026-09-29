@@ -107,7 +107,7 @@ static char device_key[40] = "";
  * a robot and an app that disagree about the server register in one place and
  * ask questions in another. */
 #ifndef ORBIE_API_BASE
-#define ORBIE_API_BASE "https://orbie-apis.vercel.app"
+#define ORBIE_API_BASE "https://orbie-apis-seven.vercel.app"
 #endif
 #define API_BASE_DEFAULT ORBIE_API_BASE
 static char api_base[96] = API_BASE_DEFAULT;
