@@ -1,0 +1,32 @@
+Comment,Designator,Footprint,LCSC Part #,Qty
+XIAO RP2040 (Seeed 102010428),U1,XIAO_Castellated,,1
+10u,"C1,C4",C_0805_2012Metric_Pad1.18x1.45mm_HandSolder,,2
+USB-C 5V in,J1,USB_C_Receptacle_GCT_USB4125-xx-x_6P_TopMnt_Horizontal,,1
+5k1,"R1,R2",R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,,2
+SMAJ5.0A TVS,D1,D_SMA,,1
+3A,F1,Fuse_1206_3216Metric,,1
+22u,C2,C_1210_3225Metric_Pad1.33x2.70mm_HandSolder,,1
+AO3401A,Q1,SOT-23_Handsoldering,,1
+AO3400A,Q2,SOT-23_Handsoldering,,1
+10k,"R3,R7,R8,R16,R17,R18,R19",R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,,7
+100k,R4,R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,,1
+0R05 1W,R5,R_2512_6332Metric,,1
+100k (pads dead),R6,R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,,1
+POGO PIN + (P50 spring),TP1,TestPoint_THTPad_D2.0mm_Drill1.0mm,,1
+POGO PIN - (P50 spring),TP2,TestPoint_THTPad_D2.0mm_Drill1.0mm,,1
+IR LED 940nm L,D2,LED_D5.0mm,,1
+33R 1W,"R9,R10",R_1206_3216Metric,,2
+MMBT2222A,"Q3,Q4",SOT-23_Handsoldering,,2
+1k,"R11,R12,R13",R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,,3
+IR LED 940nm R,D3,LED_D5.0mm,,1
+AH1806-W,U2,SOT-23_Handsoldering,,1
+100n,"C3,C7",C_0603_1608Metric_Pad1.08x0.95mm_HandSolder,,2
+FEED / PAIR,SW1,SW_Push_1P1T_NO_CK_KMR2,,1
+STATUS,D4,LED_0603_1608Metric,,1
+DRV8833PWP,U3,HTSSOP-16-1EP_4.4x5mm_P0.65mm_EP3.4x5mm,,1
+10n,C5,C_0603_1608Metric_Pad1.08x0.95mm_HandSolder,,1
+2u2,C6,C_0603_1608Metric_Pad1.08x0.95mm_HandSolder,,1
+TCA9534PWR,U4,TSSOP-16_4.4x5mm_P0.65mm,,1
+2k2,"R14,R15",R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,,2
+STACK BUS 10p,J2,JST_PH_B10B-PH-K_1x10_P2.00mm_Vertical,,1
+BUS UART (opt. smart module),J3,JST_PH_B4B-PH-K_1x04_P2.00mm_Vertical,,1

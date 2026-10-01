@@ -1,0 +1,8 @@
+Comment,Designator,Footprint,LCSC Part #,Qty
+BUS from dock (bottom),J1,JST_PH_B10B-PH-K_1x10_P2.00mm_Vertical,,1
+BUS to next module (top),J3,JST_PH_B10B-PH-K_1x10_P2.00mm_Vertical,,1
+PADDLE MOTOR N20,J2,JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical,,1
+IR LED 940nm (drop beam),D1,LED_D3.0mm,,1
+150R,R1,R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,,1
+phototransistor (drop beam),Q1,LED_D3.0mm,,1
+0R,R2,R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,,1

@@ -1,0 +1,8 @@
+Ref,Value,Symbol,Footprint,Side,Description
+J1,"BUS from dock (bottom)",Connector:Conn_01x10_Pin,Connector_JST:JST_PH_B10B-PH-K_1x10_P2.00mm_Vertical,F,"spring-contact bus, bottom face"
+J3,"BUS to next module (top)",Connector:Conn_01x10_Pin,Connector_JST:JST_PH_B10B-PH-K_1x10_P2.00mm_Vertical,F,"pass-through so the water tower stacks on top"
+J2,"PADDLE MOTOR N20",Connector:Conn_01x02_Pin,Connector_JST:JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical,F,"paddle drum gearmotor"
+D1,"IR LED 940nm (drop beam)",Device:LED,LED_THT:LED_D3.0mm,F,"chute emitter"
+R1,"150R",Device:R,Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,F,"resistor"
+Q1,"phototransistor (drop beam)",Device:Q_Photo_NPN,LED_THT:LED_D3.0mm,F,"chute receiver, pulled up at the dock"
+R2,"0R",Device:R,Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,F,"resistor"

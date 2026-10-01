@@ -1,0 +1,69 @@
+Comment,Designator,Footprint,LCSC Part #,Qty
+XIAO RP2040 (Seeed 102010428),U1,XIAO_Castellated,,1
+10u,"C1,C4,C8,C9,C16",C_0805_2012Metric_Pad1.18x1.45mm_HandSolder,,5
+"BUMPER switches (N.O., parallel)",J13,JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical,,1
+LSM6DS3TR-C,U2,LGA-14_3x2.5mm_P0.5mm_LayoutBorder3x4y,,1
+100n,"C2,C3,C19,C20,C21,C15,C17,C18",C_0603_1608Metric_Pad1.08x0.95mm_HandSolder,,8
+2k2,"R1,R2,R23,R24,R13,R14",R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,,6
+ADS1015IDGS,U16,TSSOP-10_3x3mm_P0.5mm,,1
+"CLIFF L IR (analog, down)",J10,JST_PH_B3B-PH-K_1x03_P2.00mm_Vertical,,1
+"CLIFF R IR (analog, down)",J11,JST_PH_B3B-PH-K_1x03_P2.00mm_Vertical,,1
+DRV8833PWP,U3,HTSSOP-16-1EP_4.4x5mm_P0.65mm_EP3.4x5mm,,1
+10n,C5,C_0603_1608Metric_Pad1.08x0.95mm_HandSolder,,1
+2u2,C6,C_0603_1608Metric_Pad1.08x0.95mm_HandSolder,,1
+10k,"R3,R15,R16,R17",R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,,4
+0R1 1W,"R25,R26",R_1206_3216Metric,,2
+100k,"R27,R18",R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,,2
+74LVC1G04,"U4,U5",SOT-23-5_HandSoldering,,2
+VM = VSYS | +5V,JP1,SolderJumper-3_P1.3mm_Open_RoundedPad1.0x1.5mm,,1
+MOTOR L N20 encoder,J1,JST_PH_B6B-PH-K_1x06_P2.00mm_Vertical,,1
+MOTOR R N20 encoder,J2,JST_PH_B6B-PH-K_1x06_P2.00mm_Vertical,,1
+USB-C charge,J3,USB_C_Receptacle_GCT_USB4125-xx-x_6P_TopMnt_Horizontal,,1
+5k1,"R4,R5",R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,,2
+SMAJ5.0A TVS,D6,D_SMA,,1
+POGO pad board,J4,JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical,,1
+PMEG2005EJ,"D1,D2",D_SOD-323F,,2
+2A,F1,Fuse_1206_3216Metric,,1
+BQ24074RGT,U6,VQFN-16-1EP_3x3mm_P0.5mm_EP1.68x1.68mm,,1
+4u7,C7,C_0603_1608Metric_Pad1.08x0.95mm_HandSolder,,1
+1k1 (ILIM 1.5A),R6,R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,,1
+590 (ISET 1.5A),R7,R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,,1
+1k5 (ITERM),R8,R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,,1
+10k DNP (TS bypass),R9,R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,,1
+10k (TMR),R10,R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,,1
+NTC 10k on cells,J14,JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical,,1
+BATT 1S2P 18650,J5,JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical,,1
+POWER,SW1,SW_SPDT_PCM12,,1
+DW01A-G,U14,SOT-23-6_Handsoldering,,1
+100R,R21,R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,,1
+1k,"R22,R19",R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,,2
+AO3400A (discharge),Q3,SOT-23_Handsoldering,,1
+AO3400A (charge),Q4,SOT-23_Handsoldering,,1
+LC709203FQH-01TWG,U7,WDFN-8-1EP_3x2mm_P0.5mm_EP1.3x1.4mm,,1
+1u,"C10,C13,C14",C_0603_1608Metric_Pad1.08x0.95mm_HandSolder,,3
+MT3608,U8,SOT-23-6,,1
+4u7 3A,L1,L_Taiyo-Yuden_NR-40xx,,1
+SS14,"D3,D5",D_SMA,,2
+75k,R11,R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,,1
+22k,R12,R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,,1
+22u,"C11,C12",C_1210_3225Metric_Pad1.33x2.70mm_HandSolder,,2
+AP2112K-3.3,U9,SOT-23-5_HandSoldering,,1
+TCA9517ADGKR,U15,MSOP-8_3x3mm_P0.65mm,,1
+TCA9534PWR,U10,TSSOP-16_4.4x5mm_P0.65mm,,1
+VL53L5CX FRONT,J15,JST_PH_B6B-PH-K_1x06_P2.00mm_Vertical,,1
+VL53L5CX LEFT,J16,JST_PH_B6B-PH-K_1x06_P2.00mm_Vertical,,1
+VL53L5CX RIGHT,J17,JST_PH_B6B-PH-K_1x06_P2.00mm_Vertical,,1
+MAX98357AETE+T,U11,QFN-16-1EP_3x3mm_P0.5mm_EP1.75x1.75mm,,1
+GAIN: GND | open | VDD,JP2,SolderJumper-3_P1.3mm_Open_RoundedPad1.0x1.5mm,,1
+100k DNP (3 dB),R20,R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,,1
+SPEAKER sealed 4R,J6,JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical,,1
+NECK HARNESS 16p,J7,JST_PH_B16B-PH-K_1x16_P2.00mm_Vertical,,1
+LIDAR LD19 (5V GND TX PWM),J12,JST_ZH_B4B-ZR_1x04_P1.50mm_Vertical,,1
+SERVO head tilt,J9,JST_PH_B3B-PH-K_1x03_P2.00mm_Vertical,,1
+AO3401A,Q1,SOT-23_Handsoldering,,1
+AO3400A,Q2,SOT-23_Handsoldering,,1
+AH1806-W,U12,SOT-23_Handsoldering,,1
+IRM-H638T 38kHz (rear),U13,Everlight_IRM-H6xxT,,1
+STATUS (ember),D4,LED_0603_1608Metric,,1
+RESET (pinhole),SW2,SW_Push_SPST_NO_Alps_SKRK,,1
+BOOT / hold 10 s = factory reset,SW3,SW_Push_SPST_NO_Alps_SKRK,,1

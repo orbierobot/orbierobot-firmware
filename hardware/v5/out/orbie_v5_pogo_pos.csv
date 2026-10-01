@@ -1,0 +1,4 @@
+Ref,Val,Package,PosX,PosY,Rot,Side
+"PAD1","POGO+ D6","PogoPad_D6mm",-7.000000,-2.000000,0.000000,bottom
+"PAD2","POGO- D6","PogoPad_D6mm",7.000000,-2.000000,0.000000,bottom
+"J1","to J4 body","JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical",0.000000,4.500000,0.000000,top
