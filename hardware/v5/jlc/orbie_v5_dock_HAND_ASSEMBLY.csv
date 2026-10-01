@@ -1,0 +1,9 @@
+Ref,Value,Footprint,Why
+U1A,XIAO_ESP32C3 D0-D6,XIAO_Castellated,hand / module
+U1B,"XIAO_ESP32C3 D7-D10,3V3,GND,5V",XIAO_Castellated,hand / module
+TP1,POGO PIN + (P50 spring),TestPoint_THTPad_D2.0mm_Drill1.0mm,hand / module
+TP2,POGO PIN - (P50 spring),TestPoint_THTPad_D2.0mm_Drill1.0mm,hand / module
+D2,IR LED 940nm L,LED_D5.0mm,hand / module
+D3,IR LED 940nm R,LED_D5.0mm,hand / module
+J2,STACK BUS 10p,JST_PH_B10B-PH-K_1x10_P2.00mm_Vertical,hand / module
+J3,BUS UART (opt. smart module),JST_PH_B4B-PH-K_1x04_P2.00mm_Vertical,hand / module

@@ -1,0 +1,26 @@
+Ref,Value,Footprint,Why
+U1A,XIAO_RP2040 D0-D6,XIAO_Castellated,hand / module
+U1B,"XIAO_RP2040 D7-D10,3V3,GND,5V",XIAO_Castellated,hand / module
+J13,"BUMPER switches (N.O., parallel)",JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical,hand / module
+J10,"CLIFF L IR (analog, down)",JST_PH_B3B-PH-K_1x03_P2.00mm_Vertical,hand / module
+J11,"CLIFF R IR (analog, down)",JST_PH_B3B-PH-K_1x03_P2.00mm_Vertical,hand / module
+JP1,VM = VSYS | +5V,SolderJumper-3_P1.3mm_Open_RoundedPad1.0x1.5mm,hand / module
+J1,MOTOR L N20 encoder,JST_PH_B6B-PH-K_1x06_P2.00mm_Vertical,hand / module
+J2,MOTOR R N20 encoder,JST_PH_B6B-PH-K_1x06_P2.00mm_Vertical,hand / module
+J4,POGO pad board,JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical,hand / module
+R9,10k DNP (TS bypass),R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,DNP
+J14,NTC 10k on cells,JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical,hand / module
+J5,BATT 1S2P 18650,JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical,hand / module
+J15,VL53L5CX FRONT,JST_PH_B6B-PH-K_1x06_P2.00mm_Vertical,hand / module
+J16,VL53L5CX LEFT,JST_PH_B6B-PH-K_1x06_P2.00mm_Vertical,hand / module
+J17,VL53L5CX RIGHT,JST_PH_B6B-PH-K_1x06_P2.00mm_Vertical,hand / module
+JP2,GAIN: GND | open | VDD,SolderJumper-3_P1.3mm_Open_RoundedPad1.0x1.5mm,hand / module
+R20,100k DNP (3 dB),R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,DNP
+J6,SPEAKER sealed 4R,JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical,hand / module
+J7,NECK HARNESS 16p,JST_PH_B16B-PH-K_1x16_P2.00mm_Vertical,hand / module
+J12,LIDAR LD19 (5V GND TX PWM),JST_ZH_B4B-ZR_1x04_P1.50mm_Vertical,hand / module
+J9,SERVO head tilt,JST_PH_B3B-PH-K_1x03_P2.00mm_Vertical,hand / module
+U12,AH1806-W,SOT-23_Handsoldering,bottom side
+U13,IRM-H638T 38kHz (rear),Everlight_IRM-H6xxT,hand / module
+SW2,RESET (pinhole),SW_Push_SPST_NO_Alps_SKRK,hand / module
+SW3,BOOT / hold 10 s = factory reset,SW_Push_SPST_NO_Alps_SKRK,hand / module

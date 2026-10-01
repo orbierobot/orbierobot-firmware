@@ -1,0 +1,4 @@
+Ref,Value,Footprint,Why
+PAD1,POGO+ D6,PogoPad_D6mm,bottom side
+PAD2,POGO- D6,PogoPad_D6mm,bottom side
+J1,to J4 body,JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical,hand / module

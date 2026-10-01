@@ -1,0 +1,6 @@
+Ref,Value,Footprint,Why
+J1,BUS from dock (bottom),JST_PH_B10B-PH-K_1x10_P2.00mm_Vertical,hand / module
+J3,BUS to next module (top),JST_PH_B10B-PH-K_1x10_P2.00mm_Vertical,hand / module
+J2,PADDLE MOTOR N20,JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical,hand / module
+D1,IR LED 940nm (drop beam),LED_D3.0mm,hand / module
+Q1,phototransistor (drop beam),LED_D3.0mm,hand / module

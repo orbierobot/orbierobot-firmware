@@ -1,0 +1,4 @@
+Ref,Value,Footprint,Why
+J1,BUS from feeder/dock,JST_PH_B10B-PH-K_1x10_P2.00mm_Vertical,hand / module
+J2,PUMP 5V,JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical,hand / module
+J4,FLOAT SWITCH (low level),JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical,hand / module
