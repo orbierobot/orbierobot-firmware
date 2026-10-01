@@ -1,0 +1,8 @@
+Ref,Val,Package,PosX,PosY,Rot,Side
+"D1","IR LED 940nm (drop beam)","LED_D3.0mm",17.000000,-8.000000,0.000000,top
+"J1","BUS from dock (bottom)","JST_PH_B10B-PH-K_1x10_P2.00mm_Vertical",-12.000000,-9.000000,0.000000,top
+"J2","PADDLE MOTOR N20","JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical",12.000000,0.000000,90.000000,top
+"J3","BUS to next module (top)","JST_PH_B10B-PH-K_1x10_P2.00mm_Vertical",-12.000000,9.000000,0.000000,top
+"Q1","phototransistor (drop beam)","LED_D3.0mm",17.000000,8.000000,0.000000,top
+"R1","150R","R_0603_1608Metric_Pad0.98x0.95mm_HandSolder",12.000000,-6.000000,0.000000,top
+"R2","0R","R_0603_1608Metric_Pad0.98x0.95mm_HandSolder",12.000000,7.000000,0.000000,top

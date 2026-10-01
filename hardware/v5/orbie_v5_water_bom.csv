@@ -1,0 +1,5 @@
+Ref,Value,Symbol,Footprint,Side,Description
+J1,"BUS from feeder/dock",Connector:Conn_01x10_Pin,Connector_JST:JST_PH_B10B-PH-K_1x10_P2.00mm_Vertical,F,"spring-contact bus, bottom face"
+J2,"PUMP 5V",Connector:Conn_01x02_Pin,Connector_JST:JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical,F,"submersible pump"
+J4,"FLOAT SWITCH (low level)",Connector:Conn_01x02_Pin,Connector_JST:JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical,F,"closes when reservoir low"
+R2,"0R",Device:R,Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,F,"resistor"

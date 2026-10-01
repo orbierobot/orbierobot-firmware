@@ -1,0 +1,2364 @@
+{
+    "$schema": "https://schemas.kicad.org/erc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-10-01T17:29:03",
+    "ignored_checks": [
+        {
+            "description": "Global label only appears once in the schematic",
+            "key": "single_global_label"
+        },
+        {
+            "description": "Four connection points are joined together",
+            "key": "four_way_junction"
+        },
+        {
+            "description": "SPICE model issue",
+            "key": "simulation_model_issue"
+        },
+        {
+            "description": "Assigned footprint doesn't match footprint filters",
+            "key": "footprint_filter"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.6",
+    "sheets": [
+        {
+            "path": "/",
+            "uuid_path": "/abcc57fd-6a7e-4186-8eed-f3b7f43aac21",
+            "violations": [
+                {
+                    "description": "The current configuration does not include the footprint library 'orbie_v5'",
+                    "items": [
+                        {
+                            "description": "Symbol U1A [Conn_01x07_Pin]",
+                            "pos": {
+                                "x": 0.4,
+                                "y": 0.4
+                            },
+                            "uuid": "0b361ad4-2676-49f4-99db-098b72a80bae"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Connector'",
+                    "items": [
+                        {
+                            "description": "Symbol U1A [Conn_01x07_Pin]",
+                            "pos": {
+                                "x": 0.4,
+                                "y": 0.4
+                            },
+                            "uuid": "0b361ad4-2676-49f4-99db-098b72a80bae"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol D2 Pin 1 [K, Passive, Line]",
+                            "pos": {
+                                "x": 0.4119,
+                                "y": 2.05
+                            },
+                            "uuid": "563d7930-0b3d-4405-a2bb-34d381e0e5f9"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Connector_USB'",
+                    "items": [
+                        {
+                            "description": "Symbol J1 [USB_C_Receptacle_PowerOnly_6P]",
+                            "pos": {
+                                "x": 0.45,
+                                "y": 1.25
+                            },
+                            "uuid": "859e05cb-fa18-4d7c-bb11-71acf92b13f2"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Connector'",
+                    "items": [
+                        {
+                            "description": "Symbol J1 [USB_C_Receptacle_PowerOnly_6P]",
+                            "pos": {
+                                "x": 0.45,
+                                "y": 1.25
+                            },
+                            "uuid": "859e05cb-fa18-4d7c-bb11-71acf92b13f2"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'LED_THT'",
+                    "items": [
+                        {
+                            "description": "Symbol D2 [LED]",
+                            "pos": {
+                                "x": 0.45,
+                                "y": 2.05
+                            },
+                            "uuid": "ab75016b-34ba-4c16-80d3-9074603a966a"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol D2 [LED]",
+                            "pos": {
+                                "x": 0.45,
+                                "y": 2.05
+                            },
+                            "uuid": "ab75016b-34ba-4c16-80d3-9074603a966a"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol U1A Pin 1 [Pin_1, Passive, Line]",
+                            "pos": {
+                                "x": 0.4508,
+                                "y": 0.3238
+                            },
+                            "uuid": "39b3b474-ade3-4560-8d58-d5a3ce895e5d"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol U3 Pin 1 [~{SLEEP}, Input, Line]",
+                            "pos": {
+                                "x": 0.473,
+                                "y": 2.7484
+                            },
+                            "uuid": "3708cc76-b87c-4b78-b8e8-37d0c12671b9"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "Pins of type Bidirectional and Power output are connected",
+                    "items": [
+                        {
+                            "description": "Symbol U3 Pin 3 [AISEN, Bidirectional, Line]",
+                            "pos": {
+                                "x": 0.473,
+                                "y": 2.7992
+                            },
+                            "uuid": "4c88f2cc-96cd-4417-a7bc-3778436b9886"
+                        },
+                        {
+                            "description": "Symbol #FLG03 Pin 1 [Power output, Line]",
+                            "pos": {
+                                "x": 4.2,
+                                "y": 0.4
+                            },
+                            "uuid": "68dd0037-4270-49a1-9ec0-fe46a8f232dc"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "pin_to_pin"
+                },
+                {
+                    "description": "Pins of type Bidirectional and Power output are connected",
+                    "items": [
+                        {
+                            "description": "Symbol U3 Pin 6 [BISEN, Bidirectional, Line]",
+                            "pos": {
+                                "x": 0.473,
+                                "y": 2.8246
+                            },
+                            "uuid": "87616776-e06f-42d5-b6a2-4d7741fd12f6"
+                        },
+                        {
+                            "description": "Symbol #FLG03 Pin 1 [Power output, Line]",
+                            "pos": {
+                                "x": 4.2,
+                                "y": 0.4
+                            },
+                            "uuid": "68dd0037-4270-49a1-9ec0-fe46a8f232dc"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "pin_to_pin"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Package_SO'",
+                    "items": [
+                        {
+                            "description": "Symbol U3 [DRV8833PWP]",
+                            "pos": {
+                                "x": 0.6,
+                                "y": 2.85
+                            },
+                            "uuid": "a9154788-2329-4532-a96f-3307819b4751"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Driver_Motor'",
+                    "items": [
+                        {
+                            "description": "Symbol U3 [DRV8833PWP]",
+                            "pos": {
+                                "x": 0.6,
+                                "y": 2.85
+                            },
+                            "uuid": "a9154788-2329-4532-a96f-3307819b4751"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol J1 Pin A5 [CC1, Bidirectional, Line]",
+                            "pos": {
+                                "x": 0.6024,
+                                "y": 1.3008
+                            },
+                            "uuid": "da836429-21b8-4ce3-9f1f-c38fc8cdb4b9"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol Q3 Pin 1 [B, Input, Line]",
+                            "pos": {
+                                "x": 0.6992,
+                                "y": 2.15
+                            },
+                            "uuid": "5489ce29-5356-4978-926b-341d674e297b"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'orbie_v5'",
+                    "items": [
+                        {
+                            "description": "Symbol U1B [Conn_01x07_Pin]",
+                            "pos": {
+                                "x": 0.7,
+                                "y": 0.4
+                            },
+                            "uuid": "09e99c58-d8c6-4c1d-9d1b-df0a65626755"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Connector'",
+                    "items": [
+                        {
+                            "description": "Symbol U1B [Conn_01x07_Pin]",
+                            "pos": {
+                                "x": 0.7,
+                                "y": 0.4
+                            },
+                            "uuid": "09e99c58-d8c6-4c1d-9d1b-df0a65626755"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol R9 Pin 1 [Passive, Line]",
+                            "pos": {
+                                "x": 0.75,
+                                "y": 1.9619
+                            },
+                            "uuid": "cbd08de7-21d3-4901-84fc-abf170034598"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol R9 [R]",
+                            "pos": {
+                                "x": 0.75,
+                                "y": 2.0
+                            },
+                            "uuid": "32e0ce84-e479-4ddd-8228-f47fac6659d5"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol R9 [R]",
+                            "pos": {
+                                "x": 0.75,
+                                "y": 2.0
+                            },
+                            "uuid": "32e0ce84-e479-4ddd-8228-f47fac6659d5"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Package_TO_SOT_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol Q3 [MMBT2222A]",
+                            "pos": {
+                                "x": 0.75,
+                                "y": 2.15
+                            },
+                            "uuid": "ad538620-e3ab-43cd-a54d-954748a9e567"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Transistor_BJT'",
+                    "items": [
+                        {
+                            "description": "Symbol Q3 [MMBT2222A]",
+                            "pos": {
+                                "x": 0.75,
+                                "y": 2.15
+                            },
+                            "uuid": "ad538620-e3ab-43cd-a54d-954748a9e567"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol U1B Pin 1 [Pin_1, Passive, Line]",
+                            "pos": {
+                                "x": 0.7508,
+                                "y": 0.3238
+                            },
+                            "uuid": "d3e8fc5b-0c1e-4da5-a0ec-a1e5d1fb18ad"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol D1 Pin 1 [A1, Passive, Line]",
+                            "pos": {
+                                "x": 0.7619,
+                                "y": 1.4
+                            },
+                            "uuid": "bfbf060d-f09e-4510-90c9-050c9dbcec7a"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol R1 Pin 1 [Passive, Line]",
+                            "pos": {
+                                "x": 0.8,
+                                "y": 1.1119
+                            },
+                            "uuid": "22006bdf-ab41-40ef-b58e-1ea354fb15d2"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol R1 [R]",
+                            "pos": {
+                                "x": 0.8,
+                                "y": 1.15
+                            },
+                            "uuid": "1660dda9-c998-4782-9043-efc0ee2dc95f"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol R1 [R]",
+                            "pos": {
+                                "x": 0.8,
+                                "y": 1.15
+                            },
+                            "uuid": "1660dda9-c998-4782-9043-efc0ee2dc95f"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol R2 Pin 1 [Passive, Line]",
+                            "pos": {
+                                "x": 0.8,
+                                "y": 1.2119
+                            },
+                            "uuid": "695ec8b4-0534-430f-8af7-89bcf447a304"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol R2 [R]",
+                            "pos": {
+                                "x": 0.8,
+                                "y": 1.25
+                            },
+                            "uuid": "1f13536e-9c6b-4505-8724-0d020b766a2d"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol R2 [R]",
+                            "pos": {
+                                "x": 0.8,
+                                "y": 1.25
+                            },
+                            "uuid": "1f13536e-9c6b-4505-8724-0d020b766a2d"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Diode_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol D1 [SMAJ5.0A]",
+                            "pos": {
+                                "x": 0.8,
+                                "y": 1.4
+                            },
+                            "uuid": "90371fa6-521b-49e0-9966-0054f3a22625"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Diode'",
+                    "items": [
+                        {
+                            "description": "Symbol D1 [SMAJ5.0A]",
+                            "pos": {
+                                "x": 0.8,
+                                "y": 1.4
+                            },
+                            "uuid": "90371fa6-521b-49e0-9966-0054f3a22625"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol C1 Pin 1 [Passive, Line]",
+                            "pos": {
+                                "x": 1.0,
+                                "y": 0.3019
+                            },
+                            "uuid": "d8deefbc-4ef5-47bf-ac64-8f9969669fda"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol C1 [C]",
+                            "pos": {
+                                "x": 1.0,
+                                "y": 0.34
+                            },
+                            "uuid": "5e29810c-0b2e-485e-9f15-dfac197dc271"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol C1 [C]",
+                            "pos": {
+                                "x": 1.0,
+                                "y": 0.34
+                            },
+                            "uuid": "5e29810c-0b2e-485e-9f15-dfac197dc271"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol C4 Pin 1 [Passive, Line]",
+                            "pos": {
+                                "x": 1.0,
+                                "y": 2.6619
+                            },
+                            "uuid": "cb8c45ff-a07b-443b-8417-570f70e2a9f4"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol C4 [C]",
+                            "pos": {
+                                "x": 1.0,
+                                "y": 2.7
+                            },
+                            "uuid": "45469661-c678-42cc-95e4-c8b7f6667116"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol C4 [C]",
+                            "pos": {
+                                "x": 1.0,
+                                "y": 2.7
+                            },
+                            "uuid": "45469661-c678-42cc-95e4-c8b7f6667116"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol C5 Pin 1 [Passive, Line]",
+                            "pos": {
+                                "x": 1.0,
+                                "y": 2.7619
+                            },
+                            "uuid": "b464abab-470d-4314-8c47-850837137c26"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol C5 [C]",
+                            "pos": {
+                                "x": 1.0,
+                                "y": 2.8
+                            },
+                            "uuid": "bc7d4efe-34ff-43da-a013-16335935d1b8"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol C5 [C]",
+                            "pos": {
+                                "x": 1.0,
+                                "y": 2.8
+                            },
+                            "uuid": "bc7d4efe-34ff-43da-a013-16335935d1b8"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol C6 Pin 1 [Passive, Line]",
+                            "pos": {
+                                "x": 1.0,
+                                "y": 2.8619
+                            },
+                            "uuid": "089ddbc4-6022-41e8-a3ca-1eca7eee0330"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol C6 [C]",
+                            "pos": {
+                                "x": 1.0,
+                                "y": 2.9
+                            },
+                            "uuid": "70d8e57e-0ba0-4cb5-ab42-60a76ebf77d1"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol C6 [C]",
+                            "pos": {
+                                "x": 1.0,
+                                "y": 2.9
+                            },
+                            "uuid": "70d8e57e-0ba0-4cb5-ab42-60a76ebf77d1"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol R11 Pin 1 [Passive, Line]",
+                            "pos": {
+                                "x": 1.05,
+                                "y": 2.1119
+                            },
+                            "uuid": "1431976d-d828-465d-9018-4ad506d4239c"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol R11 [R]",
+                            "pos": {
+                                "x": 1.05,
+                                "y": 2.15
+                            },
+                            "uuid": "e1059335-1a89-478c-9b1e-1122024c524b"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol R11 [R]",
+                            "pos": {
+                                "x": 1.05,
+                                "y": 2.15
+                            },
+                            "uuid": "e1059335-1a89-478c-9b1e-1122024c524b"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol F1 Pin 1 [Passive, Line]",
+                            "pos": {
+                                "x": 1.1,
+                                "y": 1.2246
+                            },
+                            "uuid": "135e1e93-036e-41b5-bb53-c99da1acf7ff"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Fuse'",
+                    "items": [
+                        {
+                            "description": "Symbol F1 [Polyfuse_Small]",
+                            "pos": {
+                                "x": 1.1,
+                                "y": 1.25
+                            },
+                            "uuid": "b59795f5-b13b-432f-a776-cc015904c57d"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol F1 [Polyfuse_Small]",
+                            "pos": {
+                                "x": 1.1,
+                                "y": 1.25
+                            },
+                            "uuid": "b59795f5-b13b-432f-a776-cc015904c57d"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol D3 Pin 1 [K, Passive, Line]",
+                            "pos": {
+                                "x": 1.3119,
+                                "y": 2.05
+                            },
+                            "uuid": "e5970508-a8b3-437d-b09c-3a550a92ba84"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'LED_THT'",
+                    "items": [
+                        {
+                            "description": "Symbol D3 [LED]",
+                            "pos": {
+                                "x": 1.35,
+                                "y": 2.05
+                            },
+                            "uuid": "792028e5-9abe-4ad8-9cfa-df9cd0e35a42"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol D3 [LED]",
+                            "pos": {
+                                "x": 1.35,
+                                "y": 2.05
+                            },
+                            "uuid": "792028e5-9abe-4ad8-9cfa-df9cd0e35a42"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol C2 Pin 1 [Passive, Line]",
+                            "pos": {
+                                "x": 1.4,
+                                "y": 1.2119
+                            },
+                            "uuid": "96a81a60-88fa-4fb9-8161-812798c8df08"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol C2 [C]",
+                            "pos": {
+                                "x": 1.4,
+                                "y": 1.25
+                            },
+                            "uuid": "4b34f84e-788e-4fed-be16-f2744fe38567"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol C2 [C]",
+                            "pos": {
+                                "x": 1.4,
+                                "y": 1.25
+                            },
+                            "uuid": "4b34f84e-788e-4fed-be16-f2744fe38567"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol U4 Pin 1 [A0, Input, Line]",
+                            "pos": {
+                                "x": 1.4984,
+                                "y": 2.8754
+                            },
+                            "uuid": "1d5fe7d1-2b15-4463-9ca5-1a8aa9bed505"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol Q4 Pin 1 [B, Input, Line]",
+                            "pos": {
+                                "x": 1.5992,
+                                "y": 2.15
+                            },
+                            "uuid": "19da958d-c842-446c-80e2-d347728b3f57"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Package_SO'",
+                    "items": [
+                        {
+                            "description": "Symbol U4 [TCA9534]",
+                            "pos": {
+                                "x": 1.6,
+                                "y": 2.85
+                            },
+                            "uuid": "b4980178-dd33-40dd-9cf1-d342018183b9"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Interface_Expansion'",
+                    "items": [
+                        {
+                            "description": "Symbol U4 [TCA9534]",
+                            "pos": {
+                                "x": 1.6,
+                                "y": 2.85
+                            },
+                            "uuid": "b4980178-dd33-40dd-9cf1-d342018183b9"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol R10 Pin 1 [Passive, Line]",
+                            "pos": {
+                                "x": 1.65,
+                                "y": 1.9619
+                            },
+                            "uuid": "ea0dbdc6-d286-4b12-b20f-0ab3fc359a2c"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol R10 [R]",
+                            "pos": {
+                                "x": 1.65,
+                                "y": 2.0
+                            },
+                            "uuid": "29633110-fc1b-4421-8fa0-02643b5a5202"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol R10 [R]",
+                            "pos": {
+                                "x": 1.65,
+                                "y": 2.0
+                            },
+                            "uuid": "29633110-fc1b-4421-8fa0-02643b5a5202"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Package_TO_SOT_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol Q4 [MMBT2222A]",
+                            "pos": {
+                                "x": 1.65,
+                                "y": 2.15
+                            },
+                            "uuid": "ca4e731d-a642-4734-b2e5-e337a7c0a231"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Transistor_BJT'",
+                    "items": [
+                        {
+                            "description": "Symbol Q4 [MMBT2222A]",
+                            "pos": {
+                                "x": 1.65,
+                                "y": 2.15
+                            },
+                            "uuid": "ca4e731d-a642-4734-b2e5-e337a7c0a231"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol Q1 Pin 1 [G, Input, Line]",
+                            "pos": {
+                                "x": 1.7492,
+                                "y": 1.15
+                            },
+                            "uuid": "92da01ac-301d-4773-bfb8-a280a3a9a032"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol Q2 Pin 1 [G, Input, Line]",
+                            "pos": {
+                                "x": 1.7492,
+                                "y": 1.4
+                            },
+                            "uuid": "939ca5e1-ee64-41b5-83c8-8e57d8e8b90b"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Package_TO_SOT_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol Q1 [AO3401A]",
+                            "pos": {
+                                "x": 1.8,
+                                "y": 1.15
+                            },
+                            "uuid": "85bc1c6e-048c-4f95-b1b9-415d06974ac1"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Transistor_FET'",
+                    "items": [
+                        {
+                            "description": "Symbol Q1 [AO3401A]",
+                            "pos": {
+                                "x": 1.8,
+                                "y": 1.15
+                            },
+                            "uuid": "85bc1c6e-048c-4f95-b1b9-415d06974ac1"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Package_TO_SOT_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol Q2 [AO3400A]",
+                            "pos": {
+                                "x": 1.8,
+                                "y": 1.4
+                            },
+                            "uuid": "564b56ac-5e83-40cb-af72-37052164699a"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Transistor_FET'",
+                    "items": [
+                        {
+                            "description": "Symbol Q2 [AO3400A]",
+                            "pos": {
+                                "x": 1.8,
+                                "y": 1.4
+                            },
+                            "uuid": "564b56ac-5e83-40cb-af72-37052164699a"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol R12 Pin 1 [Passive, Line]",
+                            "pos": {
+                                "x": 1.95,
+                                "y": 2.1119
+                            },
+                            "uuid": "2ede4a19-d90b-436b-bda0-f5141d423ec5"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol R12 [R]",
+                            "pos": {
+                                "x": 1.95,
+                                "y": 2.15
+                            },
+                            "uuid": "d6f6b450-7c5b-4dd6-825a-fd3697f5d8ba"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol R12 [R]",
+                            "pos": {
+                                "x": 1.95,
+                                "y": 2.15
+                            },
+                            "uuid": "d6f6b450-7c5b-4dd6-825a-fd3697f5d8ba"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol C7 Pin 1 [Passive, Line]",
+                            "pos": {
+                                "x": 1.95,
+                                "y": 2.6619
+                            },
+                            "uuid": "c35b98c3-ef24-44dc-ab32-073ad40c8aee"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol C7 [C]",
+                            "pos": {
+                                "x": 1.95,
+                                "y": 2.7
+                            },
+                            "uuid": "ac564044-4033-44cb-abbb-0951c14e26d8"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol C7 [C]",
+                            "pos": {
+                                "x": 1.95,
+                                "y": 2.7
+                            },
+                            "uuid": "ac564044-4033-44cb-abbb-0951c14e26d8"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol R3 Pin 1 [Passive, Line]",
+                            "pos": {
+                                "x": 2.15,
+                                "y": 1.0619
+                            },
+                            "uuid": "f4dc48a1-22bd-4e53-95c2-4d7223faf65e"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol R3 [R]",
+                            "pos": {
+                                "x": 2.15,
+                                "y": 1.1
+                            },
+                            "uuid": "b1c272d5-fd09-47c5-807b-fa31d1c8c087"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol R3 [R]",
+                            "pos": {
+                                "x": 2.15,
+                                "y": 1.1
+                            },
+                            "uuid": "b1c272d5-fd09-47c5-807b-fa31d1c8c087"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol R4 Pin 1 [Passive, Line]",
+                            "pos": {
+                                "x": 2.15,
+                                "y": 1.4119
+                            },
+                            "uuid": "b7956af2-acef-4b2e-a00b-229800b338b3"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol R4 [R]",
+                            "pos": {
+                                "x": 2.15,
+                                "y": 1.45
+                            },
+                            "uuid": "588994d6-1e4b-4a8d-a241-578be58f7f52"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol R4 [R]",
+                            "pos": {
+                                "x": 2.15,
+                                "y": 1.45
+                            },
+                            "uuid": "588994d6-1e4b-4a8d-a241-578be58f7f52"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol R14 Pin 1 [Passive, Line]",
+                            "pos": {
+                                "x": 2.25,
+                                "y": 2.6619
+                            },
+                            "uuid": "5d741e56-3f43-4a9a-a92b-6db61c725b21"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol R14 [R]",
+                            "pos": {
+                                "x": 2.25,
+                                "y": 2.7
+                            },
+                            "uuid": "ab15da4a-945d-4464-83ad-f5fc2866f469"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol R14 [R]",
+                            "pos": {
+                                "x": 2.25,
+                                "y": 2.7
+                            },
+                            "uuid": "ab15da4a-945d-4464-83ad-f5fc2866f469"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol R15 Pin 1 [Passive, Line]",
+                            "pos": {
+                                "x": 2.25,
+                                "y": 2.7619
+                            },
+                            "uuid": "4ea40035-f949-45be-931b-86aa76eb5be4"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol R15 [R]",
+                            "pos": {
+                                "x": 2.25,
+                                "y": 2.8
+                            },
+                            "uuid": "0ad1c2ff-5b05-4f87-a5b2-c8400df0576b"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol R15 [R]",
+                            "pos": {
+                                "x": 2.25,
+                                "y": 2.8
+                            },
+                            "uuid": "0ad1c2ff-5b05-4f87-a5b2-c8400df0576b"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol U2 Pin 1 [VDD, Power input, Line]",
+                            "pos": {
+                                "x": 2.3,
+                                "y": 1.9484
+                            },
+                            "uuid": "850b90db-a924-4e76-b233-764dd1429e90"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Package_TO_SOT_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol U2 [AH1806-W]",
+                            "pos": {
+                                "x": 2.3,
+                                "y": 2.05
+                            },
+                            "uuid": "a84b243a-7322-4882-9e68-6e32f90e74a9"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Sensor_Magnetic'",
+                    "items": [
+                        {
+                            "description": "Symbol U2 [AH1806-W]",
+                            "pos": {
+                                "x": 2.3,
+                                "y": 2.05
+                            },
+                            "uuid": "a84b243a-7322-4882-9e68-6e32f90e74a9"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol R5 Pin 1 [Passive, Line]",
+                            "pos": {
+                                "x": 2.5,
+                                "y": 1.1119
+                            },
+                            "uuid": "0aae63d5-5aec-4c0e-87f8-61033c88a867"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol R5 [R]",
+                            "pos": {
+                                "x": 2.5,
+                                "y": 1.15
+                            },
+                            "uuid": "0d6e0b42-08f1-42b4-a5e5-a95829207580"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol R5 [R]",
+                            "pos": {
+                                "x": 2.5,
+                                "y": 1.15
+                            },
+                            "uuid": "0d6e0b42-08f1-42b4-a5e5-a95829207580"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol R6 Pin 1 [Passive, Line]",
+                            "pos": {
+                                "x": 2.5,
+                                "y": 1.2619
+                            },
+                            "uuid": "eba7dc32-c7b6-43bf-9f53-6e8e6cbb57ed"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol R6 [R]",
+                            "pos": {
+                                "x": 2.5,
+                                "y": 1.3
+                            },
+                            "uuid": "99e9b9ce-6864-4a9c-b719-1a7dd1d6a6f4"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol R6 [R]",
+                            "pos": {
+                                "x": 2.5,
+                                "y": 1.3
+                            },
+                            "uuid": "99e9b9ce-6864-4a9c-b719-1a7dd1d6a6f4"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol C3 Pin 1 [Passive, Line]",
+                            "pos": {
+                                "x": 2.6,
+                                "y": 1.9619
+                            },
+                            "uuid": "9b554c0a-09a5-4d96-bb95-5722a918848a"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol C3 [C]",
+                            "pos": {
+                                "x": 2.6,
+                                "y": 2.0
+                            },
+                            "uuid": "d98c7085-d7c6-4769-aeb1-8d5080759668"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol C3 [C]",
+                            "pos": {
+                                "x": 2.6,
+                                "y": 2.0
+                            },
+                            "uuid": "d98c7085-d7c6-4769-aeb1-8d5080759668"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Connector_JST'",
+                    "items": [
+                        {
+                            "description": "Symbol J2 [Conn_01x10_Pin]",
+                            "pos": {
+                                "x": 2.6,
+                                "y": 2.85
+                            },
+                            "uuid": "114edcd8-9477-473e-8537-8bb94615ade3"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Connector'",
+                    "items": [
+                        {
+                            "description": "Symbol J2 [Conn_01x10_Pin]",
+                            "pos": {
+                                "x": 2.6,
+                                "y": 2.85
+                            },
+                            "uuid": "114edcd8-9477-473e-8537-8bb94615ade3"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol J2 Pin 1 [Pin_1, Passive, Line]",
+                            "pos": {
+                                "x": 2.6508,
+                                "y": 2.7484
+                            },
+                            "uuid": "d5d56630-d615-4561-b9e5-9509c3a99cb6"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol R7 Pin 1 [Passive, Line]",
+                            "pos": {
+                                "x": 2.8,
+                                "y": 1.1119
+                            },
+                            "uuid": "d3205a3a-b43a-4e35-abf5-6433e82d986b"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol R7 [R]",
+                            "pos": {
+                                "x": 2.8,
+                                "y": 1.15
+                            },
+                            "uuid": "2fe2aeac-2fdc-49a7-a8db-f48bd391fd98"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol R7 [R]",
+                            "pos": {
+                                "x": 2.8,
+                                "y": 1.15
+                            },
+                            "uuid": "2fe2aeac-2fdc-49a7-a8db-f48bd391fd98"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol R8 Pin 1 [Passive, Line]",
+                            "pos": {
+                                "x": 2.8,
+                                "y": 1.2619
+                            },
+                            "uuid": "30032686-d747-4d2a-99e5-929eb35f635b"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol R8 [R]",
+                            "pos": {
+                                "x": 2.8,
+                                "y": 1.3
+                            },
+                            "uuid": "5f90959c-0054-46f8-963d-57c7b09c7675"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol R8 [R]",
+                            "pos": {
+                                "x": 2.8,
+                                "y": 1.3
+                            },
+                            "uuid": "5f90959c-0054-46f8-963d-57c7b09c7675"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol SW1 Pin 1 [1, Passive, Line]",
+                            "pos": {
+                                "x": 2.8492,
+                                "y": 2.05
+                            },
+                            "uuid": "c9c24855-6951-4320-b16c-007c1398aaf9"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Button_Switch_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol SW1 [SW_Push]",
+                            "pos": {
+                                "x": 2.9,
+                                "y": 2.05
+                            },
+                            "uuid": "ce73d874-8ba3-4d62-b684-53c4f390bc9a"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Switch'",
+                    "items": [
+                        {
+                            "description": "Symbol SW1 [SW_Push]",
+                            "pos": {
+                                "x": 2.9,
+                                "y": 2.05
+                            },
+                            "uuid": "ce73d874-8ba3-4d62-b684-53c4f390bc9a"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol R16 Pin 1 [Passive, Line]",
+                            "pos": {
+                                "x": 3.0,
+                                "y": 2.7119
+                            },
+                            "uuid": "61c3da7e-a506-4cdc-b843-25646ab8231d"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol R16 [R]",
+                            "pos": {
+                                "x": 3.0,
+                                "y": 2.75
+                            },
+                            "uuid": "6c1b0697-66d5-4a7d-b1a4-3ea8b6888003"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol R16 [R]",
+                            "pos": {
+                                "x": 3.0,
+                                "y": 2.75
+                            },
+                            "uuid": "6c1b0697-66d5-4a7d-b1a4-3ea8b6888003"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol R17 Pin 1 [Passive, Line]",
+                            "pos": {
+                                "x": 3.0,
+                                "y": 2.8119
+                            },
+                            "uuid": "41bb9e42-745f-4aaf-beff-a4cd4856b39d"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol R17 [R]",
+                            "pos": {
+                                "x": 3.0,
+                                "y": 2.85
+                            },
+                            "uuid": "2d1fd204-35d3-417d-b9f0-b1f58800ec1c"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol R17 [R]",
+                            "pos": {
+                                "x": 3.0,
+                                "y": 2.85
+                            },
+                            "uuid": "2d1fd204-35d3-417d-b9f0-b1f58800ec1c"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol R18 Pin 1 [Passive, Line]",
+                            "pos": {
+                                "x": 3.0,
+                                "y": 2.9119
+                            },
+                            "uuid": "523dd21f-4b3e-4cd1-8a2e-59b83f7700ba"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol R18 [R]",
+                            "pos": {
+                                "x": 3.0,
+                                "y": 2.95
+                            },
+                            "uuid": "0bddb0e8-c2be-4864-82f7-07ad6975cf71"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol R18 [R]",
+                            "pos": {
+                                "x": 3.0,
+                                "y": 2.95
+                            },
+                            "uuid": "0bddb0e8-c2be-4864-82f7-07ad6975cf71"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol R19 Pin 1 [Passive, Line]",
+                            "pos": {
+                                "x": 3.0,
+                                "y": 3.0119
+                            },
+                            "uuid": "02521bb4-df3f-4c6a-9106-77c15194c194"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol R19 [R]",
+                            "pos": {
+                                "x": 3.0,
+                                "y": 3.05
+                            },
+                            "uuid": "cef86bdd-77d5-4c6f-8def-6806da8b3b1e"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol R19 [R]",
+                            "pos": {
+                                "x": 3.0,
+                                "y": 3.05
+                            },
+                            "uuid": "cef86bdd-77d5-4c6f-8def-6806da8b3b1e"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol D4 Pin 1 [K, Passive, Line]",
+                            "pos": {
+                                "x": 3.1619,
+                                "y": 2.0
+                            },
+                            "uuid": "7621a0e1-62b2-4395-9d87-fa123599cf30"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol TP1 Pin 1 [1, Passive, Line]",
+                            "pos": {
+                                "x": 3.2,
+                                "y": 1.15
+                            },
+                            "uuid": "660453e1-6f05-43bf-a240-b934f001ac05"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'TestPoint'",
+                    "items": [
+                        {
+                            "description": "Symbol TP1 [TestPoint]",
+                            "pos": {
+                                "x": 3.2,
+                                "y": 1.15
+                            },
+                            "uuid": "a181bb92-386f-4bf6-bc27-9d3078207d1c"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Connector'",
+                    "items": [
+                        {
+                            "description": "Symbol TP1 [TestPoint]",
+                            "pos": {
+                                "x": 3.2,
+                                "y": 1.15
+                            },
+                            "uuid": "a181bb92-386f-4bf6-bc27-9d3078207d1c"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol TP2 Pin 1 [1, Passive, Line]",
+                            "pos": {
+                                "x": 3.2,
+                                "y": 1.35
+                            },
+                            "uuid": "81f1220d-8f9e-4ad5-9a55-161fdd16f7a3"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'TestPoint'",
+                    "items": [
+                        {
+                            "description": "Symbol TP2 [TestPoint]",
+                            "pos": {
+                                "x": 3.2,
+                                "y": 1.35
+                            },
+                            "uuid": "92a2a800-11dc-4419-a084-a5314364a887"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Connector'",
+                    "items": [
+                        {
+                            "description": "Symbol TP2 [TestPoint]",
+                            "pos": {
+                                "x": 3.2,
+                                "y": 1.35
+                            },
+                            "uuid": "92a2a800-11dc-4419-a084-a5314364a887"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'LED_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol D4 [LED]",
+                            "pos": {
+                                "x": 3.2,
+                                "y": 2.0
+                            },
+                            "uuid": "c2150705-270a-44ee-b660-fc38719274ba"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol D4 [LED]",
+                            "pos": {
+                                "x": 3.2,
+                                "y": 2.0
+                            },
+                            "uuid": "c2150705-270a-44ee-b660-fc38719274ba"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol R13 Pin 1 [Passive, Line]",
+                            "pos": {
+                                "x": 3.2,
+                                "y": 2.1119
+                            },
+                            "uuid": "d252f3ca-788e-44a6-8adb-e641a67a1f8b"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+                    "items": [
+                        {
+                            "description": "Symbol R13 [R]",
+                            "pos": {
+                                "x": 3.2,
+                                "y": 2.15
+                            },
+                            "uuid": "1e3ce7fa-c359-417e-971e-c9cd87e6fc6e"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol R13 [R]",
+                            "pos": {
+                                "x": 3.2,
+                                "y": 2.15
+                            },
+                            "uuid": "1e3ce7fa-c359-417e-971e-c9cd87e6fc6e"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Connector_JST'",
+                    "items": [
+                        {
+                            "description": "Symbol J3 [Conn_01x04_Pin]",
+                            "pos": {
+                                "x": 3.4,
+                                "y": 2.85
+                            },
+                            "uuid": "035e4a62-f3b1-440d-b578-b24d0613ac6e"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Connector'",
+                    "items": [
+                        {
+                            "description": "Symbol J3 [Conn_01x04_Pin]",
+                            "pos": {
+                                "x": 3.4,
+                                "y": 2.85
+                            },
+                            "uuid": "035e4a62-f3b1-440d-b578-b24d0613ac6e"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol J3 Pin 1 [Pin_1, Passive, Line]",
+                            "pos": {
+                                "x": 3.4508,
+                                "y": 2.8246
+                            },
+                            "uuid": "7b7852c4-bd7e-4b80-bd24-f1568c96b0ba"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol #FLG01 Pin 1 [Power output, Line]",
+                            "pos": {
+                                "x": 3.8,
+                                "y": 0.4
+                            },
+                            "uuid": "d5563cea-bd8b-48aa-beeb-b1e8a212936f"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'power'",
+                    "items": [
+                        {
+                            "description": "Symbol #FLG01 [PWR_FLAG]",
+                            "pos": {
+                                "x": 3.8,
+                                "y": 0.4
+                            },
+                            "uuid": "b648bcef-ee63-4fff-a2ea-095d2cacc246"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol #FLG02 Pin 1 [Power output, Line]",
+                            "pos": {
+                                "x": 4.0,
+                                "y": 0.4
+                            },
+                            "uuid": "248f65c5-65b7-4caf-b582-c067acb567b8"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'power'",
+                    "items": [
+                        {
+                            "description": "Symbol #FLG02 [PWR_FLAG]",
+                            "pos": {
+                                "x": 4.0,
+                                "y": 0.4
+                            },
+                            "uuid": "64ecdd62-4f7d-4ea7-ad66-2b75085cfd7c"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol #FLG03 Pin 1 [Power output, Line]",
+                            "pos": {
+                                "x": 4.2,
+                                "y": 0.4
+                            },
+                            "uuid": "68dd0037-4270-49a1-9ec0-fe46a8f232dc"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'power'",
+                    "items": [
+                        {
+                            "description": "Symbol #FLG03 [PWR_FLAG]",
+                            "pos": {
+                                "x": 4.2,
+                                "y": 0.4
+                            },
+                            "uuid": "8bfe30fe-d624-4d70-a12a-1926b3701825"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol #FLG04 Pin 1 [Power output, Line]",
+                            "pos": {
+                                "x": 4.4,
+                                "y": 0.4
+                            },
+                            "uuid": "f75e9a26-903f-47ce-9b57-adfbfe3ae93f"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'power'",
+                    "items": [
+                        {
+                            "description": "Symbol #FLG04 [PWR_FLAG]",
+                            "pos": {
+                                "x": 4.4,
+                                "y": 0.4
+                            },
+                            "uuid": "177069ba-12b1-41b6-a7cc-edeef5d017bf"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol #FLG05 Pin 1 [Power output, Line]",
+                            "pos": {
+                                "x": 4.6,
+                                "y": 0.4
+                            },
+                            "uuid": "6ffb95ca-6bc1-4ec1-ba8e-566dd335305d"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'power'",
+                    "items": [
+                        {
+                            "description": "Symbol #FLG05 [PWR_FLAG]",
+                            "pos": {
+                                "x": 4.6,
+                                "y": 0.4
+                            },
+                            "uuid": "62738787-c219-48bd-9735-4f98d6b324cb"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol #FLG06 Pin 1 [Power output, Line]",
+                            "pos": {
+                                "x": 4.8,
+                                "y": 0.4
+                            },
+                            "uuid": "e8f43be2-fca9-48e1-96da-3ac3603a9723"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'power'",
+                    "items": [
+                        {
+                            "description": "Symbol #FLG06 [PWR_FLAG]",
+                            "pos": {
+                                "x": 4.8,
+                                "y": 0.4
+                            },
+                            "uuid": "7cf95545-62e5-4b37-bda9-ea98e7fa4092"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol #FLG07 Pin 1 [Power output, Line]",
+                            "pos": {
+                                "x": 5.0,
+                                "y": 0.4
+                            },
+                            "uuid": "8bbaa703-1223-48a8-b699-54f3b0ec5893"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'power'",
+                    "items": [
+                        {
+                            "description": "Symbol #FLG07 [PWR_FLAG]",
+                            "pos": {
+                                "x": 5.0,
+                                "y": 0.4
+                            },
+                            "uuid": "cdad030a-7f05-4cb6-9775-31b8e3df508e"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                }
+            ]
+        }
+    ],
+    "source": "orbie_v5_dock.kicad_sch"
+}

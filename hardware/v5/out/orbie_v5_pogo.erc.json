@@ -1,0 +1,233 @@
+{
+    "$schema": "https://schemas.kicad.org/erc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-30T16:02:11",
+    "ignored_checks": [
+        {
+            "description": "Global label only appears once in the schematic",
+            "key": "single_global_label"
+        },
+        {
+            "description": "Four connection points are joined together",
+            "key": "four_way_junction"
+        },
+        {
+            "description": "SPICE model issue",
+            "key": "simulation_model_issue"
+        },
+        {
+            "description": "Assigned footprint doesn't match footprint filters",
+            "key": "footprint_filter"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.6",
+    "sheets": [
+        {
+            "path": "/",
+            "uuid_path": "/b9d0a533-1ddd-4e7d-bc49-b813a9695378",
+            "violations": [
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol PAD1 Pin 1 [1, Passive, Line]",
+                            "pos": {
+                                "x": 0.4,
+                                "y": 0.4
+                            },
+                            "uuid": "e1cc72f7-a42e-4c9c-b4ce-52ab9c21fcbf"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'orbie_v5'",
+                    "items": [
+                        {
+                            "description": "Symbol PAD1 [TestPoint]",
+                            "pos": {
+                                "x": 0.4,
+                                "y": 0.4
+                            },
+                            "uuid": "64424eb2-f002-45e9-b887-eff0653ae742"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Connector'",
+                    "items": [
+                        {
+                            "description": "Symbol PAD1 [TestPoint]",
+                            "pos": {
+                                "x": 0.4,
+                                "y": 0.4
+                            },
+                            "uuid": "64424eb2-f002-45e9-b887-eff0653ae742"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol PAD2 Pin 1 [1, Passive, Line]",
+                            "pos": {
+                                "x": 0.6,
+                                "y": 0.4
+                            },
+                            "uuid": "d0671aad-ba43-498a-8ece-1d2f7718b4b9"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'orbie_v5'",
+                    "items": [
+                        {
+                            "description": "Symbol PAD2 [TestPoint]",
+                            "pos": {
+                                "x": 0.6,
+                                "y": 0.4
+                            },
+                            "uuid": "144e2e8f-131f-4403-bec0-dbe9e5dac118"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Connector'",
+                    "items": [
+                        {
+                            "description": "Symbol PAD2 [TestPoint]",
+                            "pos": {
+                                "x": 0.6,
+                                "y": 0.4
+                            },
+                            "uuid": "144e2e8f-131f-4403-bec0-dbe9e5dac118"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Connector_JST'",
+                    "items": [
+                        {
+                            "description": "Symbol J1 [Conn_01x02_Pin]",
+                            "pos": {
+                                "x": 0.8,
+                                "y": 0.4
+                            },
+                            "uuid": "ce1064de-b04a-434b-a0a9-326ced427ac6"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Connector'",
+                    "items": [
+                        {
+                            "description": "Symbol J1 [Conn_01x02_Pin]",
+                            "pos": {
+                                "x": 0.8,
+                                "y": 0.4
+                            },
+                            "uuid": "ce1064de-b04a-434b-a0a9-326ced427ac6"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol J1 Pin 1 [Pin_1, Passive, Line]",
+                            "pos": {
+                                "x": 0.8508,
+                                "y": 0.4
+                            },
+                            "uuid": "b8e7529f-3c2c-42bb-82f3-a7519c682cc4"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol #FLG01 Pin 1 [Power output, Line]",
+                            "pos": {
+                                "x": 1.0,
+                                "y": 0.4
+                            },
+                            "uuid": "507224af-272f-4101-8893-925775843372"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'power'",
+                    "items": [
+                        {
+                            "description": "Symbol #FLG01 [PWR_FLAG]",
+                            "pos": {
+                                "x": 1.0,
+                                "y": 0.4
+                            },
+                            "uuid": "54b6f273-91c8-451d-b3e1-8ed94c605a51"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Symbol pin or wire end off connection grid",
+                    "items": [
+                        {
+                            "description": "Symbol #FLG02 Pin 1 [Power output, Line]",
+                            "pos": {
+                                "x": 1.2,
+                                "y": 0.4
+                            },
+                            "uuid": "3debcaf0-c523-45c9-b3f6-2d6befd1e79e"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "endpoint_off_grid"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'power'",
+                    "items": [
+                        {
+                            "description": "Symbol #FLG02 [PWR_FLAG]",
+                            "pos": {
+                                "x": 1.2,
+                                "y": 0.4
+                            },
+                            "uuid": "f268320e-f56e-40ba-9887-9a83c6714816"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                }
+            ]
+        }
+    ],
+    "source": "orbie_v5_pogo.kicad_sch"
+}

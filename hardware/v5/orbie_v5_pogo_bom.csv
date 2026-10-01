@@ -1,0 +1,4 @@
+Ref,Value,Symbol,Footprint,Side,Description
+PAD1,"POGO+ D6",Connector:TestPoint,orbie_v5:PogoPad_D6mm,B,"belly pad +"
+PAD2,"POGO- D6",Connector:TestPoint,orbie_v5:PogoPad_D6mm,B,"belly pad -"
+J1,"to J4 body",Connector:Conn_01x02_Pin,Connector_JST:JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical,F,"to body J4"

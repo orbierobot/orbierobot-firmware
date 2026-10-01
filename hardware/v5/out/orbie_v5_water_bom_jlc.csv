@@ -1,0 +1,5 @@
+Comment,Designator,Footprint,LCSC Part #,Qty
+BUS from feeder/dock,J1,JST_PH_B10B-PH-K_1x10_P2.00mm_Vertical,,1
+PUMP 5V,J2,JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical,,1
+FLOAT SWITCH (low level),J4,JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical,,1
+0R,R2,R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,,1

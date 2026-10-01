@@ -1,0 +1,5 @@
+Ref,Val,Package,PosX,PosY,Rot,Side
+"J1","BUS from feeder/dock","JST_PH_B10B-PH-K_1x10_P2.00mm_Vertical",-12.000000,-9.000000,0.000000,top
+"J2","PUMP 5V","JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical",12.000000,-1.000000,90.000000,top
+"J4","FLOAT SWITCH (low level)","JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical",4.000000,9.000000,0.000000,top
+"R2","0R","R_0603_1608Metric_Pad0.98x0.95mm_HandSolder",16.000000,8.000000,0.000000,top
