@@ -83,3 +83,18 @@ wires directly to the header pins.
 | Cables | 60 |
 | JLCPCB boards (paid separately) | 1,450 + 250 shipping |
 | **Everything** | **about 3,700–4,400** |
+
+## F. Mouser HK basket as built on 2 Oct 2026 (HK$1,902.82, free UPS, all "Dispatches Now")
+
+XIAO RP2040 ×3 · PCM12SMTR ×2 · AH1806-W-7 ×3 · 100 nF 0603 ×10 · DFRobot FIT0450 encoder motor ×4 ·
+SparkFun SEN-19013 VL53L5CX ×3 · TCRT5000 ×4 · 220 R ×10 · 10 k ×10 · NTC 10 k ×3 ·
+Chip Quik low-temp paste · Chip Quik SMD291 flux · MG 424-NS wick · JST B6B-PH-K-S(LF)(SN) ×10 ·
+B2B-PH-K-S(LF)(SN) ×10 · B2B-XH-A(LF)(SN) ×2 · TSOP38238 IR receiver ×2 (replaces IRM-H638T, same pinout) ·
+PUI AS04008PR-6 speaker 8 Ω 3 W ×2 · Adafruit 4712 LC709203F breakout ×2 (bare chip not sold by Mouser HK;
+wire the breakout to the battery + I2C instead of fitting U7 on the first rig) · Adafruit CHP-170 cutters.
+
+**Not in the Mouser basket, buy elsewhere:**
+- B3B-PH-K-S(LF)(SN) 3-pin, B16B-PH-K-S(LF)(SN) 16-pin, B4B-ZR 4-pin — backordered at Mouser; LCSC/AliExpress, or solder wires directly for the bench.
+- Alps SKRKAEE010 side tact (SW2/SW3) — restricted in HK; **not needed**, the XIAO RP2040 has its own BOOT/RESET buttons.
+- Tweezers, multimeter, Pinecil V2 iron + 65 W PD charger, MHP30 or cheap hot plate, solder wire, IPA — Apliu Street / AliExpress.
+- 18650 cells ×2 (+ holder), pre-crimped JST PH leads, Ø8 magnets — Apliu Street / AliExpress.
